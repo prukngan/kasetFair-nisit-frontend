@@ -1,0 +1,25 @@
+*** Begin Patch
+*** Update File: src/app/api/auth/[...nextauth]/route.ts
+@@
+-  providers: [
+-    GoogleProvider({
+-      clientId: process.env.GOOGLE_CLIENT_ID!,
+-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+-    }),
+-  ],
++  providers: [
++    GoogleProvider({
++      clientId: process.env.GOOGLE_CLIENT_ID!,
++      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
++      authorization: {
++        params: {
++          scope: "openid email profile",
++        },
++      },
++    }),
++  ],
+@@
+-  debug: process.env.NODE_ENV === "production",
++  debug: process.env.NODE_ENV !== "production",
+ }
+*** End Patch

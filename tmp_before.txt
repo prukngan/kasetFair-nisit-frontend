@@ -8,10 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { createNisitInfo  } from "@/services/nisitService";
-import { useAuthGate } from "@/lib/useAuthGate";
 
 export default function RegisterPage() {
-
+  const { data: session, status, update: refreshSession } = useSession();
   const router = useRouter();
 
   const [formData, setFormData] = useState({
@@ -23,17 +22,18 @@ export default function RegisterPage() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
 
-  // useEffect(() => {
-  //   if (status === "loading") return;
-  //   if (submitting) return; // <— สำคัญ: อย่า redirect ระหว่างกำลังยิงคำขอ
-  //   if (status === "unauthenticated") {
-  //     router.replace("/login?callbackUrl=/register");
-  //   } else if ((session as any)?.profileComplete === true) {
-  //     router.replace("/home");
-  //   }
-  // }, [status, session, router, submitting]);
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.replace("/login");
+    } else if (status === "authenticated" && (session as any)?.profileComplete === true) {
+      router.replace("/home");
+    }
+  }, [status, session, router]);
+
+  if (status !== "authenticated") {
+    return <div />;
+  }
 
   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.target;
@@ -48,9 +48,8 @@ export default function RegisterPage() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitting(true);
     setIsLoading(true);
-    // setError(null);
+    setError(null);
 
     const payload = {
       firstName: formData.firstName.trim(),
@@ -60,23 +59,20 @@ export default function RegisterPage() {
       nisitCardLink: formData.nisitCardLink.trim() || null,
     };
 
-    // if (payload.phone.length !== 10) {
-    //   setError("Phone number must be 10 digits.");
-    //   setIsLoading(false);
-    //   return;
-    // }
-
-    // console.log(payload)
+    if (payload.phone.length !== 10) {
+      setError("Phone number must be 10 digits.");
+      setIsLoading(false);
+      return;
+    }
 
     try {
       await createNisitInfo(payload);
-      // await refreshSession?.();
-      // router.replace("/home");
+      await refreshSession?.();
+      router.replace("/home");
     } catch (err) {
-      // setError(err instanceof Error ? err.message : "Registration failed. Please try again.");
+      setError(err instanceof Error ? err.message : "Registration failed. Please try again.");
     } finally {
       setIsLoading(false);
-      setSubmitting(false);
     }
   };
 

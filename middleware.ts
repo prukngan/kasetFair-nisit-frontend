@@ -23,11 +23,13 @@ export async function middleware(req: NextRequest) {
   // ไม่มี session → เด้งไป login พร้อม callbackUrl
   const url = req.nextUrl.clone()
   url.pathname = "/login"
+  // url.pathname = "/home"
   url.searchParams.set("callbackUrl", req.nextUrl.pathname + req.nextUrl.search)
   return NextResponse.redirect(url)
 }
 
 export const config = {
   // matcher: ["/:path*"]
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: []
+  // matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 }

@@ -1,44 +1,55 @@
 "use client"
 
-import { useEffect, useState, Suspense } from "react"
+import { useEffect, useState, useRef, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { signIn, useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2, ArrowRight, Shield } from "lucide-react"
+import { exchangeWithGoogleIdToken } from "@/services/authService"
 
 function LoginForm() {
   const router = useRouter()
   const { status, data } = useSession()
   const params = useSearchParams()
   const [isLoading, setIsLoading] = useState(false)
-  const callbackUrl = params.get("callbackUrl") ?? "/"
+  // const rawCallback = params.get("callbackUrl") ?? "/"
 
-  useEffect(() => {
-    if (status !== "authenticated" || !data) return
-
-    if (data.profileComplete === false) {
-      router.replace("/register")
-      return
-    }
-
-    if (data.profileComplete) {
-      const target = callbackUrl && callbackUrl !== "/login" ? callbackUrl : "/"
-      router.replace(target)
-    }
-  }, [status, data, router, callbackUrl])
+  // sanitize callbackUrl: ห้ามย้อนกลับ /login
+  // const callbackUrl = rawCallback === "/login" ? "/" : rawCallback
 
   const error = params.get("error")
 
   const handleGoogle = async () => {
     try {
       setIsLoading(true)
-      await signIn("google", { callbackUrl })
+      await signIn("google") // ปล่อยให้ next-auth จัดการ redirect เอง
     } finally {
       setIsLoading(false)
     }
   }
+
+  useEffect(() => {
+    const run = async () => {
+      if (status !== "authenticated" || !data) return
+
+      const idToken = (data as any)?.id_token
+      if (!idToken) return // ยังไม่พร้อม ก็รอต่อ
+
+      try {
+        const result = await exchangeWithGoogleIdToken(idToken) // Nest จะ set httpOnly cookie
+        if (result?.user?.profileComplete === false) {
+          router.replace("/register")
+        } else {
+          router.replace("/home")
+        }
+      } catch (e) {
+        router.replace("/login")
+      }
+    }; run()
+  }, [data, router])
+
 
   return (
     <>
