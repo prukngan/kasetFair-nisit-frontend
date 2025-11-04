@@ -1,4 +1,4 @@
-import { NextResponse, type NextRequest, type NextURL } from "next/server"
+import { NextResponse, type NextRequest } from "next/server"
 import { jwtVerify, type JWTPayload } from "jose"
 
 const PUBLIC_WHEN_UNAUTH = ["/login", "/auth/processing", "/_health"]
@@ -26,8 +26,8 @@ function isPathStartsWith(path: string, prefixes: string[]) {
   return prefixes.some((prefix) => path.startsWith(prefix))
 }
 
-function buildLoginRedirect(url: NextURL) {
-  const target = url.clone()
+function buildLoginRedirect(url: URL) {
+  const target = new URL(url)
   target.pathname = "/login"
   target.search = ""
   target.searchParams.set("callbackUrl", url.pathname + url.search)

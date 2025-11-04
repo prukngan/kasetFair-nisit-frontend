@@ -1,5 +1,6 @@
 import { http } from "@/lib/http"
 import { AxiosError } from "axios";
+import { NisitInfo } from "./dto/nisitInfo.dto";
 
 export type RegisterPayload = {
   firstName: string
@@ -40,7 +41,22 @@ export async function createNisitInfo(payload: RegisterPayload) {
     try {
         const res = await http.post("/api/nisit/register", payload)
 
-        console.log(res)
+        // console.log(res)
+
+        if (res.status === 201 || res.status === 200) return res.data
+        
+        throw new Error(res.data?.error || `Unexpected status: ${res.status}`)
+    } catch (error) {
+      console.error(error)
+        // throw new Error(extractErrorMessage(error, "Failed to create order"))
+    }
+}
+
+export async function getNisitInfo(payload: RegisterPayload) {
+    try {
+        const res = await http.post("/api/nisit/info", payload)
+
+        // console.log(res)
 
         if (res.status === 201 || res.status === 200) return res.data
         
