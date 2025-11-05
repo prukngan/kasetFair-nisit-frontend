@@ -1,8 +1,8 @@
 import { http } from "@/lib/http"
 import { AxiosError } from "axios";
-import { CreateStoreRequestDto } from "./dto/store-info.dto";
+import { CreateStoreRequestDto, StoreStatusResponseDto } from "./dto/store-info.dto";
 
-const STORE_ENDPOINT_API = "/api/store"
+const STORE_SERVICE_API = "/api/store"
 
 function isAxiosError(err: unknown): err is AxiosError {
   return !!(err as AxiosError)?.isAxiosError;
@@ -25,9 +25,21 @@ export function extractErrorMessage(
   return fallback;
 }
 
-export async function createNisitInfo(payload: CreateStoreRequestDto) {
+export async function createStore(payload: CreateStoreRequestDto) {
   try {
-    const res = await http.post(`${STORE_ENDPOINT_API}/create`, payload)
+    const res = await http.post(`${STORE_SERVICE_API}/create`, payload)
+
+    if (res.status === 201 || res.status === 200) return res.data
+    
+    throw new Error(res.data?.error || `Unexpected status: ${res.status}`)
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+export async function getStoreStatus(payload: StoreStatusResponseDto) {
+  try {
+    const res = await http.post(`${STORE_SERVICE_API}/create`, payload)
 
     if (res.status === 201 || res.status === 200) return res.data
     

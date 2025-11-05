@@ -3,6 +3,8 @@ import { AxiosError } from "axios";
 import { NisitInfo } from "./dto/nisit-info.dto";
 import { UpdateNisitInfoPayload } from "./dto/nisit-info.dto";
 
+const NISIT_SERVICE_API = `/api/nisit`;
+
 function isAxiosError(err: unknown): err is AxiosError {
   return !!(err as AxiosError)?.isAxiosError;
 }
@@ -26,7 +28,7 @@ export function extractErrorMessage(
 
 export async function createNisitInfo(payload: NisitInfo) {
   try {
-    const res = await http.post("/api/nisit/register", payload)
+    const res = await http.post(`${NISIT_SERVICE_API}/register`, payload)
 
     if (res.status === 201 || res.status === 200) return res.data
     
@@ -38,7 +40,7 @@ export async function createNisitInfo(payload: NisitInfo) {
 
 export async function updateNisitInfo(payload: UpdateNisitInfoPayload) {
   try {
-    const res = await http.patch("/api/nisit/info", payload)
+    const res = await http.patch(`${NISIT_SERVICE_API}/info`, payload)
 
     if (res.status === 201 || res.status === 200) return res.data
     
@@ -51,7 +53,7 @@ export async function updateNisitInfo(payload: UpdateNisitInfoPayload) {
 
 export async function getNisitInfo() {
     try {
-      const res = await http.get("/api/nisit/info")
+      const res = await http.get(`${NISIT_SERVICE_API}/info`)
 
       if (res.status === 201 || res.status === 200) return res.data
       
