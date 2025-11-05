@@ -28,8 +28,10 @@ export type ExchangeResponseDto = {
 };
 
 export async function exchangeWithGoogleIdToken(idToken: string) {
-  const { data } = await http.post<ExchangeResponseDto>("/auth/exchange", {
-    id_token: idToken,
-  });
+  const { data } = await http.post<ExchangeResponseDto>(
+    "/auth/exchange",
+    { id_token: idToken },
+    { withCredentials: true }
+  );
   return data;
 }
