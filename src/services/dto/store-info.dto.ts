@@ -1,6 +1,11 @@
-type StoreType = {
-  "Nisit":  string
-  "Club":   string
+export type StoreType = "Nisit" | "Club"
+
+export type ClubApplicationDto = {
+  organizationName: string
+  presidentFirstName: string
+  presidentLastName: string
+  presidentStudentId: string
+  applicationFileName?: string | null
 }
 
 type storeState = {
@@ -20,7 +25,8 @@ type storeState = {
 export type CreateStoreRequestDto = {
   storeName: string;
   type: StoreType;
-  memberGmails: string[]
+  memberGmails: string[];
+  // clubApplication?: ClubApplicationDto;
 }
 
 export type StoreStatusResponseDto = {

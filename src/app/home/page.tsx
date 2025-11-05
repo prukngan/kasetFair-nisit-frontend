@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState, useRef } from "react"
 import { useSession, signOut } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -12,7 +12,17 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { http } from "@/lib/http"
-import { Loader2, LogOut, Mail, Plus, Store, Users2 } from "lucide-react"
+import {
+  Building2,
+  GraduationCap,
+  Loader2,
+  LogOut,
+  Mail,
+  Plus,
+  Store,
+  Users2,
+} from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
 
 type Invitation = {
   id: string
@@ -31,6 +41,7 @@ export default function HomePage() {
   const [invitations, setInvitations] = useState<Invitation[]>([])
   const [loadingInvites, setLoadingInvites] = useState(true)
   const [inviteError, setInviteError] = useState<string | null>(null)
+  const [selectingStoreType, setSelectingStoreType] = useState(false)
 
   const displayName = useMemo(
     () => session?.user?.name || session?.user?.email || "Kaset Fair Member",
@@ -57,8 +68,19 @@ export default function HomePage() {
     fetchInvitations()
   }, [fetchInvitations])
 
+
+  const selectorRef = useRef<HTMLDivElement>(null)
   const handleCreateStore = () => {
-    router.push("/store/create")
+    setSelectingStoreType((v) => !v)
+  }
+  useEffect(() => {
+    if (selectingStoreType) {
+      selectorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+    }
+  }, [selectingStoreType])
+
+  const handleSelectStoreType = (type: "Nisit" | "Club") => {
+    router.push(`/store/create?type=${type}`)
   }
 
   return (
@@ -101,16 +123,63 @@ export default function HomePage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
+            {/* ปุ่มหลัก: toggle แสดง/ซ่อนพาเนล */}
             <Button
               className="w-full bg-emerald-600 text-white hover:bg-emerald-700"
+              aria-expanded={selectingStoreType}
               onClick={handleCreateStore}
             >
               <Plus className="h-5 w-5" />
-              สร้างร้านใหม่
+              {selectingStoreType ? "Cancel" : "Create a new store"}
             </Button>
-            <p className="text-[11px] text-emerald-600">
-              หลังบันทึกข้อมูล ร้านจะต้องได้รับการอนุมัติจากผู้ดูแล
-            </p>
+
+            {/* คำอธิบายย่อใต้ปุ่ม (ซ่อนเมื่อเปิดพาเนล) */}
+            {!selectingStoreType && (
+              <p className="text-[11px] text-emerald-600">
+                Invite your teammates to manage the store together once registration is complete.
+              </p>
+            )}
+
+            {/* พาเนลแบบเลื่อนลง */}
+            <AnimatePresence initial={false}>
+              {selectingStoreType && (
+                <motion.div
+                  ref={selectorRef}
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.28, ease: "easeOut" }}
+                  className="overflow-hidden"
+                >
+                  <div className="space-y-3 pt-3">
+                    <div>
+                      <p className="text-sm font-medium text-emerald-800">Select store type</p>
+                      <p className="text-xs text-emerald-600">
+                        Choose the type of store you want to register before continuing.
+                      </p>
+                    </div>
+
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <Button
+                        className="w-full justify-start gap-3 bg-emerald-600 text-white hover:bg-emerald-700"
+                        onClick={() => handleSelectStoreType("Nisit")}
+                      >
+                        <GraduationCap className="h-5 w-5" />
+                        Nisit store
+                      </Button>
+                      <Button
+                        className="w-full justify-start gap-3 border-emerald-200 bg-white text-emerald-700 hover:bg-emerald-50"
+                        variant="outline"
+                        onClick={() => handleSelectStoreType("Club")}
+                      >
+                        <Building2 className="h-5 w-5" />
+                        Club store
+                      </Button>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </CardContent>
         </Card>
 

@@ -1,9 +1,12 @@
-"use client"
+﻿"use client"
 
 import { useCallback, useMemo, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import type { StoreType } from "@/services/dto/store-info.dto"
 import { StepIndicator } from "@/components/createStep/step-indicator"
 import { StepOneForm } from "@/components/createStep/step-one-form"
+import { StepClubInfoForm } from "@/components/createStep/step-club-form"
 import { StepTwoForm } from "@/components/createStep/step-two-form"
 import { StepThreeForm } from "@/components/createStep/step-three-form"
 
@@ -15,12 +18,34 @@ type ProductFormState = {
   fileName: string | null
 }
 
-const STEP_DEFINITIONS = [
-  { id: 1, label: "สร้างร้านค้า" },
-  { id: 2, label: "รายละเอียดร้านค้า" },
-  { id: 3, label: "ข้อมูลสินค้า" },
-  { id: 4, label: "เพิ่มเติม" },
-] as const
+type ClubInfoState = {
+  organizationName: string
+  presidentFirstName: string
+  presidentLastName: string
+  presidentStudentId: string
+  applicationFile: File | null
+  applicationFileName: string | null
+}
+
+const STEP_LABELS = {
+  createStore: "Create store",
+  storeDetails: "Store information",
+  productDetails: "Product information",
+} as const
+
+const STEP_CONFIG_BY_TYPE: Record<StoreType, Array<{ id: number; label: string }>> = {
+  Nisit: [
+    { id: 1, label: STEP_LABELS.createStore },
+    { id: 2, label: STEP_LABELS.storeDetails },
+    { id: 3, label: STEP_LABELS.productDetails },
+  ],
+  Club: [
+    { id: 1, label: STEP_LABELS.createStore },
+    { id: 2, label: "Student organization details" },
+    { id: 3, label: STEP_LABELS.storeDetails },
+    { id: 4, label: STEP_LABELS.productDetails },
+  ],
+}
 
 const MIN_MEMBERS = 3
 
@@ -37,12 +62,26 @@ export default function StoreCreatePage() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
+  const storeType = useMemo<StoreType | null>(() => {
+    const raw = searchParams.get("type")
+    if (!raw) return null
+    const normalized = raw.toLowerCase()
+    if (normalized === "nisit") return "Nisit"
+    if (normalized === "club") return "Club"
+    return null
+  }, [searchParams])
+
+  const steps = useMemo(() => (storeType ? STEP_CONFIG_BY_TYPE[storeType] : []), [storeType])
+  const totalSteps = steps.length || 1
+  const layoutStepIndex = storeType === "Club" ? 3 : 2
+  const productStepIndex = storeType === "Club" ? 4 : 3
+
   const currentStep = useMemo(() => {
     const raw = Number(searchParams.get("step")) || 1
     if (raw < 1) return 1
-    if (raw > 3) return 3
+    if (raw > totalSteps) return totalSteps
     return raw
-  }, [searchParams])
+  }, [searchParams, totalSteps])
 
   const [storeName, setStoreName] = useState("")
   const [members, setMembers] = useState<string[]>(
@@ -50,10 +89,18 @@ export default function StoreCreatePage() {
   )
   const [layoutDescription, setLayoutDescription] = useState("")
   const [layoutFile, setLayoutFile] = useState<File | null>(null)
+  const [clubInfo, setClubInfo] = useState<ClubInfoState>({
+    organizationName: "",
+    presidentFirstName: "",
+    presidentLastName: "",
+    presidentStudentId: "",
+    applicationFile: null,
+    applicationFileName: null,
+  })
   const [products, setProducts] = useState<ProductFormState[]>([createProduct(), createProduct(), createProduct()])
   const [saving, setSaving] = useState(false)
 
-  const stepStatuses = STEP_DEFINITIONS.map((step) => ({
+  const stepStatuses = steps.map((step) => ({
     id: step.id,
     label: step.label,
     status:
@@ -62,13 +109,16 @@ export default function StoreCreatePage() {
 
   const updateStepParam = useCallback(
     (step: number) => {
-      const next = Math.max(1, Math.min(3, step))
+      const next = Math.max(1, Math.min(totalSteps, step))
       const params = new URLSearchParams(searchParams.toString())
       params.set("step", String(next))
+      if (storeType) {
+        params.set("type", storeType)
+      }
       const queryString = params.toString()
       router.replace(`${pathname}?${queryString}`, { scroll: false })
     },
-    [pathname, router, searchParams]
+    [pathname, router, searchParams, storeType, totalSteps]
   )
 
   const handleNext = useCallback(
@@ -101,6 +151,24 @@ export default function StoreCreatePage() {
     setMembers((prev) => prev.filter((_, i) => i !== index))
   }
 
+  const handleClubInfoFieldChange = (
+    key: "organizationName" | "presidentFirstName" | "presidentLastName" | "presidentStudentId",
+    value: string
+  ) => {
+    setClubInfo((prev) => ({
+      ...prev,
+      [key]: value,
+    }))
+  }
+
+  const handleClubApplicationFileChange = (file: File | null) => {
+    setClubInfo((prev) => ({
+      ...prev,
+      applicationFile: file,
+      applicationFileName: file ? file.name : null,
+    }))
+  }
+
   const handleProductChange = (id: string, field: "name" | "price", value: string) => {
     setProducts((prev) =>
       prev.map((item) => (item.id === id ? { ...item, [field]: value } : item))
@@ -129,17 +197,61 @@ export default function StoreCreatePage() {
     setProducts((prev) => (prev.length === 1 ? prev : prev.filter((item) => item.id !== id)))
   }
 
+  const handleSelectStoreType = (type: StoreType) => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set("type", type)
+    params.set("step", "1")
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+  }
+
   const handleFinalSubmit = async () => {
     setSaving(true)
     await new Promise((resolve) => setTimeout(resolve, 400))
     console.log("Store draft submitted", {
       storeName,
+      storeType,
       members,
+      clubInfo: storeType === "Club" ? clubInfo : null,
       layoutDescription,
       layoutFile,
       products,
     })
     setSaving(false)
+  }
+
+  if (!storeType) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-emerald-100 px-4 py-12">
+        <div className="mx-auto flex w-full max-w-2xl flex-col items-center gap-6 rounded-3xl bg-white/80 p-10 text-center shadow-xl ring-1 ring-emerald-100">
+          <h1 className="text-2xl font-semibold text-emerald-900">เลือกประเภทร้านค้าก่อนเริ่ม</h1>
+          <p className="text-sm text-emerald-700">
+            กรุณาเลือกว่าร้านค้าที่คุณกำลังสร้างเป็นร้านค้านิสิตหรือร้านค้าขององค์กรนิสิตเพื่อให้แบบฟอร์มแสดงข้อมูลที่ถูกต้อง
+          </p>
+          <div className="grid w-full gap-3 sm:grid-cols-2">
+            <Button
+              className="w-full justify-start gap-3 bg-emerald-600 text-white hover:bg-emerald-700"
+              onClick={() => handleSelectStoreType("Nisit")}
+            >
+              ร้านค้านิสิต
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start gap-3 border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+              onClick={() => handleSelectStoreType("Club")}
+            >
+              ร้านค้าองค์กรนิสิต
+            </Button>
+          </div>
+          <Button
+            variant="ghost"
+            className="text-emerald-700 hover:bg-emerald-50"
+            onClick={() => router.push("/home")}
+          >
+            กลับหน้าแรก
+          </Button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -163,24 +275,42 @@ export default function StoreCreatePage() {
             onMemberChange={handleMemberChange}
             onAddMember={handleAddMember}
             onRemoveMember={handleRemoveMember}
-            onNext={() => handleSimulatedSave(2)}
+            onNext={() => handleSimulatedSave(currentStep + 1)}
             saving={saving}
           />
         )}
 
-        {currentStep === 2 && (
+        {storeType === "Club" && currentStep === 2 && (
+          <StepClubInfoForm
+            organizationName={clubInfo.organizationName}
+            presidentFirstName={clubInfo.presidentFirstName}
+            presidentLastName={clubInfo.presidentLastName}
+            presidentStudentId={clubInfo.presidentStudentId}
+            applicationFileName={clubInfo.applicationFileName}
+            onOrganizationNameChange={(value) => handleClubInfoFieldChange("organizationName", value)}
+            onPresidentFirstNameChange={(value) => handleClubInfoFieldChange("presidentFirstName", value)}
+            onPresidentLastNameChange={(value) => handleClubInfoFieldChange("presidentLastName", value)}
+            onPresidentStudentIdChange={(value) => handleClubInfoFieldChange("presidentStudentId", value)}
+            onApplicationFileChange={handleClubApplicationFileChange}
+            onBack={() => updateStepParam(currentStep - 1)}
+            onNext={() => handleSimulatedSave(currentStep + 1)}
+            saving={saving}
+          />
+        )}
+
+        {currentStep === layoutStepIndex && (
           <StepTwoForm
             layoutDescription={layoutDescription}
             layoutFileName={layoutFile?.name ?? null}
             onDescriptionChange={setLayoutDescription}
             onFileChange={setLayoutFile}
-            onBack={() => updateStepParam(1)}
-            onNext={() => handleSimulatedSave(3)}
+            onBack={() => updateStepParam(currentStep - 1)}
+            onNext={() => handleSimulatedSave(currentStep + 1)}
             saving={saving}
           />
         )}
 
-        {currentStep === 3 && (
+        {currentStep === productStepIndex && (
           <StepThreeForm
             products={products.map(({ id, name, price, fileName }) => ({
               id,
@@ -192,7 +322,7 @@ export default function StoreCreatePage() {
             onProductFileChange={handleProductFileChange}
             onAddProduct={handleAddProduct}
             onRemoveProduct={handleRemoveProduct}
-            onBack={() => updateStepParam(2)}
+            onBack={() => updateStepParam(currentStep - 1)}
             onSubmitAll={handleFinalSubmit}
             saving={saving}
           />
@@ -201,3 +331,4 @@ export default function StoreCreatePage() {
     </div>
   )
 }
+
