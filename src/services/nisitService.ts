@@ -1,20 +1,7 @@
 import { http } from "@/lib/http"
 import { AxiosError } from "axios";
-import { NisitInfo } from "./dto/nisitInfo.dto";
-
-export type RegisterPayload = {
-  firstName: string
-  lastName: string
-  nisitId: string
-  phone: string
-  nisitCardLink: string | null
-}
-
-export type RegisterResponse = {
-  id: string
-  profileComplete: boolean
-  // เพิ่ม field อื่น ๆ ตาม backend
-}
+import { NisitInfo } from "./dto/nisit-info.dto";
+import { UpdateNisitInfoPayload } from "./dto/nisit-info.dto";
 
 function isAxiosError(err: unknown): err is AxiosError {
   return !!(err as AxiosError)?.isAxiosError;
@@ -37,32 +24,39 @@ export function extractErrorMessage(
   return fallback;
 }
 
-export async function createNisitInfo(payload: RegisterPayload) {
-    try {
-        const res = await http.post("/api/nisit/register", payload)
+export async function createNisitInfo(payload: NisitInfo) {
+  try {
+    const res = await http.post("/api/nisit/register", payload)
 
-        // console.log(res)
-
-        if (res.status === 201 || res.status === 200) return res.data
-        
-        throw new Error(res.data?.error || `Unexpected status: ${res.status}`)
-    } catch (error) {
-      console.error(error)
-        // throw new Error(extractErrorMessage(error, "Failed to create order"))
-    }
+    if (res.status === 201 || res.status === 200) return res.data
+    
+    throw new Error(res.data?.error || `Unexpected status: ${res.status}`)
+  } catch (error) {
+    console.error(error)
+  }
 }
 
-export async function getNisitInfo(payload: RegisterPayload) {
+export async function updateNisitInfo(payload: UpdateNisitInfoPayload) {
+  try {
+    const res = await http.patch("/api/nisit/info", payload)
+
+    if (res.status === 201 || res.status === 200) return res.data
+    
+    throw new Error(res.data?.error || `Unexpected status: ${res.status}`)
+  } catch (error) {
+    console.error(error)
+  }
+
+}
+
+export async function getNisitInfo() {
     try {
-        const res = await http.post("/api/nisit/info", payload)
+      const res = await http.get("/api/nisit/info")
 
-        // console.log(res)
-
-        if (res.status === 201 || res.status === 200) return res.data
-        
-        throw new Error(res.data?.error || `Unexpected status: ${res.status}`)
+      if (res.status === 201 || res.status === 200) return res.data
+      
+      throw new Error(res.data?.error || `Unexpected status: ${res.status}`)
     } catch (error) {
       console.error(error)
-        // throw new Error(extractErrorMessage(error, "Failed to create order"))
     }
 }

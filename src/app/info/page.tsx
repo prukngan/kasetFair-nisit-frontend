@@ -1,0 +1,269 @@
+"use client"
+
+import { useEffect, useRef, useState } from "react"
+import { useRouter } from "next/navigation"
+import { Card, CardContent, CardFooter } from "@/components/ui/card"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { getNisitInfo, updateNisitInfo } from "@/services/nisitService"
+import type { NisitInfo } from "@/services/dto/nisit-info.dto"
+
+type FormState = {
+  firstName: string
+  lastName: string
+  nisitId: string
+  phone: string
+  nisitCardLink: string
+}
+
+export default function EditNisitPage() {
+  const router = useRouter()
+  const [formData, setFormData] = useState<FormState>({
+    firstName: "",
+    lastName: "",
+    nisitId: "",
+    phone: "",
+    nisitCardLink: "",
+  })
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
+  const hasFetched = useRef(false)
+
+  useEffect(() => {
+    if (hasFetched.current) return
+    hasFetched.current = true
+    const bootstrap = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const result = (await getNisitInfo()) as NisitInfo | undefined
+        if (!result) {
+          setError("ไม่สามารถโหลดข้อมูลนิสิตได้ กรุณาลองใหม่อีกครั้ง")
+          return
+        }
+        setFormData({
+          firstName: result.firstName ?? "",
+          lastName: result.lastName ?? "",
+          nisitId: result.nisitId ?? "",
+          phone: result.phone ?? "",
+          nisitCardLink: result.nisitCardLink ?? "",
+        })
+      } catch (err) {
+        console.error(err)
+        setError("เกิดข้อผิดพลาดระหว่างโหลดข้อมูล กรุณาลองใหม่")
+      } finally {
+        setLoading(false)
+      }
+    }
+    void bootstrap()
+  }, [])
+
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = event.target
+    if (name === "phone") {
+      const cleaned = value.replace(/\D/g, "").slice(0, 10)
+      setFormData((prev) => ({ ...prev, phone: cleaned }))
+      return
+    }
+    setFormData((prev) => ({ ...prev, [name]: value }))
+  }
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (saving) return
+
+    const phoneOk = /^0[0-9]{9}$/.test(formData.phone)
+    if (!phoneOk) {
+      setError("กรุณากรอกเบอร์โทรให้ถูกต้อง (10 หลักขึ้นต้นด้วย 0)")
+      return
+    }
+
+    setSaving(true)
+    setError(null)
+    setSuccess(false)
+
+    try {
+      const payload = {
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
+        phone: formData.phone.trim(),
+      }
+      const result = await updateNisitInfo(payload)
+      if (!result) {
+        setError("ไม่สามารถบันทึกข้อมูลได้ กรุณาลองใหม่")
+        return
+      }
+      setSuccess(true)
+    } catch (err) {
+      console.error(err)
+      setError("เกิดข้อผิดพลาดระหว่างบันทึกข้อมูล กรุณาลองใหม่")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleBack = () => {
+    router.back()
+  }
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-emerald-50 to-teal-50 p-4">
+        <p className="text-emerald-700">กำลังโหลดข้อมูลนิสิต...</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-xl">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-emerald-800 mb-2">แก้ไขข้อมูลนิสิต</h1>
+          <p className="text-emerald-600">
+            ปรับปรุงข้อมูลส่วนตัวให้ถูกต้อง เพื่อการติดต่อจากทีมงาน Kaset Fair
+          </p>
+        </div>
+
+        <Card className="border-emerald-200 shadow-lg">
+          <form className="flex flex-col gap-6" onSubmit={handleSubmit} noValidate>
+            <CardContent className="space-y-4">
+              <Field
+                id="firstName"
+                name="firstName"
+                label="ชื่อ"
+                value={formData.firstName}
+                onChange={handleChange}
+                disabled={saving}
+                autoComplete="given-name"
+                required
+              />
+
+              <Field
+                id="lastName"
+                name="lastName"
+                label="นามสกุล"
+                value={formData.lastName}
+                onChange={handleChange}
+                disabled={saving}
+                autoComplete="family-name"
+                required
+              />
+
+              <Field
+                id="nisitId"
+                name="nisitId"
+                label="รหัสนิสิต"
+                value={formData.nisitId}
+                disabled
+              />
+
+              <Field
+                id="phone"
+                name="phone"
+                label="เบอร์โทรศัพท์"
+                value={formData.phone}
+                onChange={handleChange}
+                disabled={saving}
+                type="tel"
+                inputMode="numeric"
+                pattern="^0[0-9]{9}$"
+                placeholder="08xxxxxxxx"
+                required
+              />
+
+              <Field
+                id="nisitCardLink"
+                name="nisitCardLink"
+                label="ลิงก์บัตรนิสิต"
+                value={formData.nisitCardLink}
+                disabled
+              />
+
+              {error && (
+                <p role="alert" className="text-sm text-red-600">
+                  {error}
+                </p>
+              )}
+              {success && (
+                <p className="text-sm text-emerald-600">
+                  บันทึกข้อมูลเรียบร้อยแล้ว
+                </p>
+              )}
+            </CardContent>
+
+            <CardFooter className="flex justify-between gap-4">
+              <Button
+                type="button"
+                variant="outline"
+                className="border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                onClick={handleBack}
+                disabled={saving}
+              >
+                ย้อนกลับ
+              </Button>
+              <Button
+                type="submit"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white disabled:bg-emerald-400"
+                disabled={saving}
+              >
+                {saving ? "กำลังบันทึก..." : "บันทึกการเปลี่ยนแปลง"}
+              </Button>
+            </CardFooter>
+          </form>
+        </Card>
+      </div>
+    </div>
+  )
+}
+
+type FieldProps = {
+  id: string
+  name: string
+  label: string
+  value: string
+  onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void
+  disabled?: boolean
+  required?: boolean
+  type?: string
+  inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"]
+  pattern?: string
+  placeholder?: string
+  autoComplete?: string
+}
+
+function Field({
+  id,
+  name,
+  label,
+  value,
+  onChange,
+  disabled,
+  required,
+  type = "text",
+  inputMode,
+  pattern,
+  placeholder,
+  autoComplete,
+}: FieldProps) {
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={id}>{label}</Label>
+      <Input
+        id={id}
+        name={name}
+        value={value}
+        onChange={onChange}
+        disabled={disabled}
+        required={required}
+        type={type}
+        inputMode={inputMode}
+        pattern={pattern}
+        placeholder={placeholder}
+        autoComplete={autoComplete}
+      />
+    </div>
+  )
+}

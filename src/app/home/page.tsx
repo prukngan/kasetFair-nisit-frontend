@@ -58,7 +58,7 @@ export default function HomePage() {
   }, [fetchInvitations])
 
   const handleCreateStore = () => {
-    router.push("/shops/create")
+    router.push("/store/create")
   }
 
   return (
