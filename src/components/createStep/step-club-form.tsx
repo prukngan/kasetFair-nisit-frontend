@@ -12,11 +12,15 @@ type StepClubInfoFormProps = {
   presidentFirstName: string
   presidentLastName: string
   presidentStudentId: string
+  presidentEmail: string
+  presidentPhone: string
   applicationFileName: string | null
   onOrganizationNameChange: (value: string) => void
   onPresidentFirstNameChange: (value: string) => void
   onPresidentLastNameChange: (value: string) => void
   onPresidentStudentIdChange: (value: string) => void
+  onPresidentEmailChange: (value: string) => void
+  onPresidentPhoneChange: (value: string) => void
   onApplicationFileChange: (file: File | null) => void
   onBack: () => void
   onNext: () => void
@@ -28,11 +32,15 @@ export function StepClubInfoForm({
   presidentFirstName,
   presidentLastName,
   presidentStudentId,
+  presidentEmail,
+  presidentPhone,
   applicationFileName,
   onOrganizationNameChange,
   onPresidentFirstNameChange,
   onPresidentLastNameChange,
   onPresidentStudentIdChange,
+  onPresidentEmailChange,
+  onPresidentPhoneChange,
   onApplicationFileChange,
   onBack,
   onNext,
@@ -84,14 +92,40 @@ export function StepClubInfoForm({
             </div>
           </div>
 
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="presidentStudentId">รหัสนิสิต (ประธานชมรม)</Label>
+              <Input
+                id="presidentStudentId"
+                value={presidentStudentId}
+                onChange={(event) => onPresidentStudentIdChange(event.target.value)}
+                placeholder="6501234567"
+                inputMode="numeric"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="presidentEmail">อีเมล (ประธานชมรม)</Label>
+              <Input
+                id="presidentEmail"
+                type="email"
+                value={presidentEmail}
+                onChange={(event) => onPresidentEmailChange(event.target.value)}
+                placeholder="example@ku.th"
+                required
+              />
+            </div>
+          </div>
+
           <div className="space-y-2">
-            <Label htmlFor="presidentStudentId">รหัสนิสิต (ประธานชมรม)</Label>
+            <Label htmlFor="presidentPhone">เบอร์โทรศัพท์ (ประธานชมรม)</Label>
             <Input
-              id="presidentStudentId"
-              value={presidentStudentId}
-              onChange={(event) => onPresidentStudentIdChange(event.target.value)}
-              placeholder="6501234567"
-              inputMode="numeric"
+              id="presidentPhone"
+              type="tel"
+              value={presidentPhone}
+              onChange={(event) => onPresidentPhoneChange(event.target.value)}
+              placeholder="0812345678"
+              inputMode="tel"
               required
             />
           </div>

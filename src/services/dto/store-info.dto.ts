@@ -1,6 +1,6 @@
 export type StoreType = "Nisit" | "Club"
 
-export type StoreState = "CreateStore" | "StoreDetails" | "ProductDetails" | "Submitted"
+export type StoreState = "CreateStore" | "ClubInfo" |"StoreDetails" | "ProductDetails" | "Submitted"
 
 export type ClubApplicationDto = {
   organizationName: string

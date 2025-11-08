@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils"
 
 type StepStatus = "completed" | "current" | "upcoming"
 
-type Step = {
+export type Step = {
   id: number
   label: string
   status: StepStatus
