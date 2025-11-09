@@ -50,6 +50,7 @@ export const clampStepToState = (
       maxStep = getProductStepIndex(type)
       break
     case "Submitted":
+    case "Pending":
       maxStep = getStepsForType(type).length
       break
     default:
@@ -70,7 +71,8 @@ export const preferredStepForState = (type: StoreType, state: StoreState): numbe
     case "ProductDetails":
       return getProductStepIndex(type)
     case "Submitted":
-      return 5
+    case "Pending":
+      return getStepsForType(type).length
     default:
       return 1
   }

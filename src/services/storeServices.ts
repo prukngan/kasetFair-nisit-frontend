@@ -5,6 +5,7 @@ import {
   CreateStoreResponseDto,
   StoreStatusRequestDto,
   StoreStatusResponseDto,
+  StorePendingValidationResponseDto,
 } from "./dto/store-info.dto"
 import { StoreDarftResponseDto, UpdateClubInfoRequestDto } from "./dto/store-draft.dto"
 import { CreateGoodRequestDto, GoodsResponseDto, UpdateGoodRequestDto } from "./dto/goods.dto"
@@ -108,6 +109,21 @@ export async function getStoreStatus(): Promise<StoreDarftResponseDto> {
   //   const message = extractErrorMessage(error, "Failed to load store status")
   //   throw new Error(message)
   // }
+}
+
+export async function commitStoreForPending(): Promise<StorePendingValidationResponseDto> {
+  try {
+    const res = await http.get(`${STORE_SERVICE_API}/mine/commit`)
+
+    if (res.status === 200) {
+      return res.data
+    }
+
+    throw new Error(res.data?.error || `Unexpected status: ${res.status}`)
+  } catch (error) {
+    const message = extractErrorMessage(error, "Failed to commit store")
+    throw new Error(message)
+  }
 }
 
 // ---------- Goods ----------

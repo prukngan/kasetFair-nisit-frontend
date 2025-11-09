@@ -58,6 +58,7 @@ export type StoreWizardCore = {
   stepError: string | null
   setStepError: (value: string | null) => void
   currentStep: number
+  stateStep: number | null
   layoutStepIndex: number
   productStepIndex: number
   steps: WizardStepIndicator[]
@@ -100,16 +101,24 @@ export function useStoreWizardCore(): StoreWizardCore {
     ? clampStepToState(rawStep, storeType, storeStatus?.state ?? null)
     : rawStep
 
+  const stateStep = useMemo(() => {
+    if (!storeType || !storeStatus?.state) return null
+    const preferred = preferredStepForState(storeType, storeStatus.state)
+    return clampStepToState(preferred, storeType, storeStatus.state)
+  }, [storeStatus?.state, storeType])
+
   const layoutStepIndex = storeType ? getLayoutStepIndex(storeType) : 2
   const productStepIndex = storeType ? getProductStepIndex(storeType) : 3
 
+  const indicatorStep = stateStep ?? currentStep
   const stepIndicators: WizardStepIndicator[] = useMemo(
     () =>
       stepsConfig.map((step) => ({
         ...step,
-        status: step.id < currentStep ? "completed" : step.id === currentStep ? "current" : "upcoming",
+        status:
+          step.id < indicatorStep ? "completed" : step.id === indicatorStep ? "current" : "upcoming",
       })),
-    [stepsConfig, currentStep]
+    [indicatorStep, stepsConfig]
   )
 
   const setUrlState = useCallback(
@@ -265,6 +274,7 @@ export function useStoreWizardCore(): StoreWizardCore {
     stepError,
     setStepError,
     currentStep,
+    stateStep,
     layoutStepIndex,
     productStepIndex,
     steps: stepIndicators,

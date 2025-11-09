@@ -1,6 +1,6 @@
 export type StoreType = "Nisit" | "Club"
 
-export type StoreState = "CreateStore" | "ClubInfo" |"StoreDetails" | "ProductDetails" | "Submitted"
+export type StoreState = "CreateStore" | "ClubInfo" | "StoreDetails" | "ProductDetails" | "Submitted" | "Pending"
 
 export type ClubApplicationDto = {
   organizationName: string
@@ -36,4 +36,21 @@ export type StoreStatusResponseDto = {
   storeName: string
   type: StoreType
   state: StoreState
+}
+
+export type StoreValidationChecklistItemDto = {
+  key?: string
+  label?: string
+  message?: string | null
+  description?: string | null
+  isValid?: boolean
+  ok?: boolean
+}
+
+export type StorePendingValidationResponseDto = {
+  storeId: number
+  type: StoreType
+  state: StoreState
+  isValid: boolean
+  checklist: StoreValidationChecklistItemDto[]
 }

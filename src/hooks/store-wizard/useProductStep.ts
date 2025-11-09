@@ -208,6 +208,10 @@ export function useProductStep(core: StoreWizardCore): UseProductStepResult {
       goToStep(1, { clamp: false })
       return false
     }
+    if (storeState === "Pending") {
+      setStepError("This store is already pending review and cannot be edited.")
+      return false
+    }
     if (!canManageProducts(storeState)) {
       setStepError("Complete the previous steps before managing products.")
       goToStep(layoutStepIndex, { clamp: false })
