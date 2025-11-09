@@ -7,6 +7,7 @@ import {
   StoreStatusResponseDto,
 } from "./dto/store-info.dto"
 import { StoreDarftResponseDto, UpdateClubInfoRequestDto } from "./dto/store-draft.dto"
+import { CreateGoodRequestDto, GoodsResponseDto, UpdateGoodRequestDto } from "./dto/goods.dto"
 
 const STORE_SERVICE_API = "/api/store"
 
@@ -107,4 +108,48 @@ export async function getStoreStatus(): Promise<StoreDarftResponseDto> {
   //   const message = extractErrorMessage(error, "Failed to load store status")
   //   throw new Error(message)
   // }
+}
+
+// ---------- Goods ----------
+
+export async function listGoods(): Promise<GoodsResponseDto[]> {
+  try {
+    const res = await http.get(`${STORE_SERVICE_API}/goods`)
+    return res.data
+  } catch (error) {
+    const message = extractErrorMessage(error, "Failed to load goods")
+    throw new Error(message)
+  }
+}
+
+export async function createGood(payload: CreateGoodRequestDto): Promise<GoodsResponseDto> {
+  try {
+    const res = await http.post(`${STORE_SERVICE_API}/goods`, payload)
+    return res.data
+  } catch (error) {
+    const message = extractErrorMessage(error, "Failed to create good")
+    throw new Error(message)
+  }
+}
+
+export async function updateGood(
+  goodId: string,
+  payload: UpdateGoodRequestDto
+): Promise<GoodsResponseDto> {
+  try {
+    const res = await http.patch(`${STORE_SERVICE_API}/goods/${goodId}`, payload)
+    return res.data
+  } catch (error) {
+    const message = extractErrorMessage(error, "Failed to update good")
+    throw new Error(message)
+  }
+}
+
+export async function deleteGood(goodId: string): Promise<void> {
+  try {
+    await http.delete(`${STORE_SERVICE_API}/goods/${goodId}`)
+  } catch (error) {
+    const message = extractErrorMessage(error, "Failed to delete good")
+    throw new Error(message)
+  }
 }

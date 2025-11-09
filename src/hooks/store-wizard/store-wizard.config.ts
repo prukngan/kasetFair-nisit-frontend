@@ -68,9 +68,9 @@ export const preferredStepForState = (type: StoreType, state: StoreState): numbe
     case "StoreDetails":
       return getLayoutStepIndex(type)
     case "ProductDetails":
-      return getLayoutStepIndex(type)
-    case "Submitted":
       return getProductStepIndex(type)
+    case "Submitted":
+      return 5
     default:
       return 1
   }
