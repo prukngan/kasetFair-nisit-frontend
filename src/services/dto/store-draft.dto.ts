@@ -15,10 +15,26 @@ export type StoreDarftResponseDto = {
 
 export type UpdateClubInfoRequestDto = {
     clubName?: string;
-    clubApplicationId?: string;
+    clubApplicationMediaId?: string;
     leaderNisitId?: string;
     leaderFirstName?: string;
     leaderLastName?: string;
     leaderEmail?: string;
     leaderPhone?: string;
+}
+
+export type UpdateClubInfoResponseDto = {
+  storeId: string,
+  storeName: string,
+  type: string,
+  state: string,
+  clubInfo: {
+    clubName?: string;
+    clubApplicationMediaId?: string;
+    leaderNisitId?: string;
+    leaderFirstName?: string;
+    leaderLastName?: string;
+    leaderEmail?: string;
+    leaderPhone?: string;
+  }
 }

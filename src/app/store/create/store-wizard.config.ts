@@ -91,15 +91,16 @@ export type ClubInfoFieldKey =
   | "presidentNisitId"
   | "presidentEmail"
   | "presidentPhone"
-  | "applicationFileName"
+  | "clubApplicationMediaId"
 
-export const CLUB_INFO_REQUIRED_FIELDS: Exclude<ClubInfoFieldKey, "applicationFileName">[] = [
+export const CLUB_INFO_REQUIRED_FIELDS: ClubInfoFieldKey[] = [
   "organizationName",
   "presidentFirstName",
   "presidentLastName",
   "presidentNisitId",
   "presidentEmail",
   "presidentPhone",
+  "clubApplicationMediaId",
 ]
 
 type ClubInfoPayloadMap = Record<ClubInfoFieldKey, keyof UpdateClubInfoRequestDto>
@@ -111,5 +112,5 @@ export const CLUB_INFO_REQUEST_FIELD_MAP: ClubInfoPayloadMap = {
   presidentNisitId: "leaderNisitId",
   presidentEmail: "leaderEmail",
   presidentPhone: "leaderPhone",
-  applicationFileName: "clubApplicationId",
+  clubApplicationMediaId: "clubApplicationMediaId",
 }

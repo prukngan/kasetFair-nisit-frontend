@@ -73,23 +73,23 @@ export async function updateClubInfo(payload: UpdateClubInfoRequestDto): Promise
   }
 }
 
-export async function getStoreDraft(step: string): Promise<StoreDarftResponseDto> {
+// export async function getStoreDraft(step: string): Promise<StoreDarftResponseDto> {
   
-  const res = await http.get(`${STORE_SERVICE_API}/mine/draft?step=${step}`)
-  return res.data
-  // try {
-  //   const res = await http.get(`${STORE_SERVICE_API}/mine/draft?step=${step}`)
+//   const res = await http.get(`${STORE_SERVICE_API}/mine/draft?step=${step}`)
+//   return res.data
+//   // try {
+//   //   const res = await http.get(`${STORE_SERVICE_API}/mine/draft?step=${step}`)
 
-  //   if (res.status === 201 || res.status === 200) {
-  //     return res.data
-  //   }
+//   //   if (res.status === 201 || res.status === 200) {
+//   //     return res.data
+//   //   }
 
-  //   throw new Error(res.data?.error || `Unexpected status: ${res.status}`)
-  // } catch (error) {
-  //   const message = extractErrorMessage(error, "Failed to load store draft")
-  //   throw new Error(message)
-  // }
-}
+//   //   throw new Error(res.data?.error || `Unexpected status: ${res.status}`)
+//   // } catch (error) {
+//   //   const message = extractErrorMessage(error, "Failed to load store draft")
+//   //   throw new Error(message)
+//   // }
+// }
 
 
 export async function getStoreStatus(): Promise<StoreDarftResponseDto> {

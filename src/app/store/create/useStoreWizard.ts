@@ -10,7 +10,9 @@ import {
   StoreStatusResponseDto,
   StoreType,
 } from "@/services/dto/store-info.dto"
-import { createStore, extractErrorMessage, getStoreDraft, getStoreStatus, updateClubInfo } from "@/services/storeServices"
+import { MediaPurpose } from "@/services/dto/media.dto"
+import { uploadMedia } from "@/services/mediaService"
+import { createStore, extractErrorMessage, getStoreStatus, updateClubInfo } from "@/services/storeServices"
 import {
   CLUB_INFO_REQUEST_FIELD_MAP,
   CLUB_INFO_REQUIRED_FIELDS,
@@ -22,10 +24,12 @@ import {
   preferredStepForState,
   stepToDraftKey,
 } from "./store-wizard.config"
+import { UpdateClubInfoResponseDto } from "@/services/dto/store-draft.dto"
 
 const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const MIN_MEMBERS = 3
 const STORE_ID_STORAGE_KEY = "kasetfair-active-store-id"
+const CLUB_INFO_STORAGE_KEY = "kasetfair-club-info-draft"
 
 export type ProductFormState = {
   id: string
@@ -35,10 +39,13 @@ export type ProductFormState = {
   fileName: string | null
 }
 
-type ClubInfoBaseState = Record<Exclude<ClubInfoFieldKey, "applicationFileName">, string>
+type ClubInfoBaseState = Record<Exclude<ClubInfoFieldKey, "clubApplicationMediaId">, string> & {
+  clubApplicationMediaId: string | null
+}
 
 export type ClubInfoState = ClubInfoBaseState & {
   applicationFileName: string | null
+  applicationFile: File | null
 }
 
 const createProduct = (): ProductFormState => ({
@@ -60,6 +67,8 @@ const emptyClubInfo: ClubInfoState = {
   presidentEmail: "",
   presidentPhone: "",
   applicationFileName: null,
+  applicationFile: null,
+  clubApplicationMediaId: null,
 }
 
 type StoreProgress = CreateStoreResponseDto | StoreStatusResponseDto
@@ -71,20 +80,14 @@ const clubInfoFieldEntries = Object.entries(CLUB_INFO_REQUEST_FIELD_MAP) as Arra
 
 const mapClubInfoToPayload = (info: ClubInfoState): UpdateClubInfoPayload =>
   clubInfoFieldEntries.reduce((acc, [stateKey, requestKey]) => {
-    const rawValue = info[stateKey]
-    if (rawValue == null) {
+    const value = info[stateKey]
+    if (typeof value !== "string") {
       return acc
     }
-
-    const normalizedValue =
-      typeof rawValue === "string" && stateKey !== "applicationFileName"
-        ? rawValue.trim()
-        : rawValue
-
-    if (typeof normalizedValue === "string" && normalizedValue.length > 0) {
+    const normalizedValue = value.trim()
+    if (normalizedValue.length > 0) {
       acc[requestKey] = normalizedValue
     }
-
     return acc
   }, {} as UpdateClubInfoPayload)
 
@@ -107,12 +110,50 @@ export function useStoreWizard() {
   >([])
   const [layoutDescription, setLayoutDescription] = useState("")
   const [layoutFile, setLayoutFile] = useState<File | null>(null)
-  const [clubInfo, setClubInfo] = useState<ClubInfoState>(emptyClubInfo)
+  const [clubInfo, setClubInfoState] = useState<ClubInfoState>(emptyClubInfo)
   const [products, setProducts] = useState<ProductFormState[]>([
     createProduct(),
     createProduct(),
     createProduct(),
   ])
+
+  const persistClubInfoDraft = useCallback(
+    (next: ClubInfoState) => {
+      if (typeof window === "undefined") return
+      if (storeType !== "Club") return
+      const storeId = window.sessionStorage.getItem(STORE_ID_STORAGE_KEY)
+      if (!storeId) return
+      const key = `${CLUB_INFO_STORAGE_KEY}-${storeId}`
+      const { applicationFile, ...serializable } = next
+      try {
+        window.sessionStorage.setItem(key, JSON.stringify(serializable))
+      } catch (error) {
+        console.warn("Failed to persist club info draft", error)
+      }
+    },
+    [storeType]
+  )
+
+  const clearClubInfoDraft = useCallback(() => {
+    if (typeof window === "undefined") return
+    const storeId = window.sessionStorage.getItem(STORE_ID_STORAGE_KEY)
+    if (!storeId) return
+    window.sessionStorage.removeItem(`${CLUB_INFO_STORAGE_KEY}-${storeId}`)
+  }, [])
+
+  const setClubInfo = useCallback(
+    (valueOrUpdater: ClubInfoState | ((prev: ClubInfoState) => ClubInfoState)) => {
+      setClubInfoState((prev) => {
+        const next =
+          typeof valueOrUpdater === "function"
+            ? (valueOrUpdater as (prev: ClubInfoState) => ClubInfoState)(prev)
+            : valueOrUpdater
+        persistClubInfoDraft(next)
+        return next
+      })
+    },
+    [persistClubInfoDraft]
+  )
 
   const typeFromQuery = useMemo<StoreType | null>(() => {
     const raw = searchParams.get("type")
@@ -197,13 +238,15 @@ export function useStoreWizard() {
     if (snapshot.type === "Club" && anySnap.clubInfo) {
       const ci = anySnap.clubInfo
       setClubInfo({
-        organizationName: ci.organizationName ?? "",
-        presidentFirstName: ci.presidentFirstName ?? "",
-        presidentLastName: ci.presidentLastName ?? "",
-        presidentNisitId: ci.presidentNisitId ?? "",
-        presidentEmail: ci.presidentEmail ?? "",
-        presidentPhone: ci.presidentPhone ?? "",
+        organizationName: ci.clubName ?? "",
+        presidentFirstName: ci.leaderFirstName ?? "",
+        presidentLastName: ci.leaderLastName ?? "",
+        presidentNisitId: ci.leaderNisitId ?? "",
+        presidentEmail: ci.leaderEmail ?? "",
+        presidentPhone: ci.leaderPhone ?? "",
         applicationFileName: ci.applicationFileName ?? null,
+        applicationFile: null,
+        clubApplicationMediaId: ci.clubApplicationMediaId ?? ci.applicationFileId ?? null,
       })
     }
 
@@ -262,6 +305,7 @@ export function useStoreWizard() {
         if (status === 404) {
           setStoreStatus(null)
           setStoreType(typeFromQuery ?? null)
+          clearClubInfoDraft()
           window.sessionStorage.removeItem(STORE_ID_STORAGE_KEY)
           return
         }
@@ -269,7 +313,7 @@ export function useStoreWizard() {
         setStepError(extractErrorMessage(error, "Unable to load store status"))
       }
     })()
-  }, [applyStoreSnapshot, setUrlState, typeFromQuery])
+  }, [applyStoreSnapshot, clearClubInfoDraft, setUrlState, typeFromQuery])
 
   // ensure storeType sync with query whenไม่มี status
   useEffect(() => {
@@ -277,6 +321,25 @@ export function useStoreWizard() {
       setStoreType(typeFromQuery)
     }
   }, [storeStatus, storeType, typeFromQuery])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    if (storeType !== "Club") return
+    const storeId = window.sessionStorage.getItem(STORE_ID_STORAGE_KEY)
+    if (!storeId) return
+    const cached = window.sessionStorage.getItem(`${CLUB_INFO_STORAGE_KEY}-${storeId}`)
+    if (!cached) return
+    try {
+      const parsed = JSON.parse(cached) as Omit<ClubInfoState, "applicationFile">
+      setClubInfo((prev) => ({
+        ...prev,
+        ...parsed,
+        applicationFile: null,
+      }))
+    } catch (error) {
+      console.warn("Failed to restore club info draft", error)
+    }
+  }, [storeType, storeStatus?.id, setClubInfo])
 
   const resetFormState = useCallback(() => {
     setStoreStatus(null)
@@ -287,8 +350,9 @@ export function useStoreWizard() {
     setClubInfo(emptyClubInfo)
     setProducts([createProduct(), createProduct(), createProduct()])
     setStepError(null)
+    clearClubInfoDraft()
     window.sessionStorage.removeItem(STORE_ID_STORAGE_KEY)
-  }, [])
+  }, [clearClubInfoDraft, setClubInfo])
 
   const handleSelectStoreType = (type: StoreType) => {
     resetFormState()
@@ -355,7 +419,7 @@ export function useStoreWizard() {
   ])
 
   const handleClubInfoFieldChange = (
-    key: keyof ClubInfoState,
+    key: ClubInfoFieldKey,
     value: string
   ) => {
     setClubInfo((prev) => ({ ...prev, [key]: value }))
@@ -365,6 +429,8 @@ export function useStoreWizard() {
     setClubInfo((prev) => ({
       ...prev,
       applicationFileName: file ? file.name : null,
+      applicationFile: file,
+      clubApplicationMediaId: prev.clubApplicationMediaId,
     }))
   }
 
@@ -380,18 +446,38 @@ export function useStoreWizard() {
       return
     }
 
-    const missingField = CLUB_INFO_REQUIRED_FIELDS.find((field) => !clubInfo[field].trim())
-    if (missingField) {
-      setStepError("Please fill in all required club information.")
-      return
-    }
-
-    const payload = mapClubInfoToPayload(clubInfo)
+    // const missingField = CLUB_INFO_REQUIRED_FIELDS.find(
+    //   (field) => !String(clubInfo[field] ?? "").trim()
+    // )
+    // if (missingField) {
+    //   setStepError("Please fill in all required club information.")
+    //   return
+    // }
 
     setSaving(true)
     setStepError(null)
 
     try {
+      let nextMediaId = clubInfo.clubApplicationMediaId ?? null
+
+      if (clubInfo.applicationFile) {
+        const media = await uploadMedia({
+          purpose: MediaPurpose.CLUB_APPLICATION,
+          file: clubInfo.applicationFile,
+        })
+        nextMediaId = media.id
+        setClubInfo((prev) => ({
+          ...prev,
+          clubApplicationMediaId: media.id,
+          applicationFile: null,
+        }))
+      }
+
+      const payload = mapClubInfoToPayload(clubInfo)
+      if (nextMediaId) {
+        payload.clubApplicationMediaId = nextMediaId
+      }
+
       const res = await updateClubInfo(payload)
       applyStoreSnapshot(res)
       updateStepParam(currentStep + 1, { clamp: false })
@@ -407,7 +493,9 @@ export function useStoreWizard() {
     storeStatus,
     storeType,
     updateStepParam,
+    setClubInfo,
     setStepError,
+    uploadMedia,
   ])
 
   const handleSimulatedSave = async (targetStep: number, options?: { clamp?: boolean }) => {
