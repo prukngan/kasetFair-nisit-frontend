@@ -7,61 +7,34 @@ import { StepOneForm } from "@/components/createStep/step-one-form"
 import { StepClubInfoForm } from "@/components/createStep/step-club-form"
 import { StepTwoForm } from "@/components/createStep/step-two-form"
 import { StepThreeForm } from "@/components/createStep/step-three-form"
-import { useStoreWizard } from "./useStoreWizard"
+import {
+  useStoreWizardCore,
+  useCreateStoreStep,
+  useClubInfoStep,
+  useStoreDetailsStep,
+  useProductStep,
+} from "@/hooks/store-wizard"
 import { useRouter } from "next/navigation"
-import type { Step } from "@/components/createStep/step-indicator"
 
 export default function StoreCreatePage() {
   const router = useRouter()
-  const wizard = useStoreWizard()
+  const core = useStoreWizardCore()
+  const createStep = useCreateStoreStep(core)
+  const clubStep = useClubInfoStep(core)
+  const storeDetailsStep = useStoreDetailsStep(core)
+  const productStep = useProductStep(core)
+  const clubInfo = clubStep.clubInfo
+
   const {
     storeType,
     storeStatus,
     loadingStatus,
-    saving,
     stepError,
     currentStep,
     layoutStepIndex,
     productStepIndex,
     steps,
-
-    // fields
-    storeName,
-    members,
-    memberEmailStatuses,
-    layoutDescription,
-    layoutFile,
-    clubInfo,
-    products,
-
-    // handlers
-    handleSelectStoreType,
-    handleCreateStore,
-    handleClubInfoFieldChange,
-    handleClubApplicationFileChange,
-    handleSaveClubInfo,
-    handleSimulatedSave,
-    handleFinalSubmit,
-    updateStepParam,
-    handleMemberChange,
-    handleAddMember,
-    handleRemoveMember,
-    handleProductChange,
-    handleProductFileChange,
-    handleAddProduct,
-    handleRemoveProduct,
-  } = wizard
-
-  const stepIndicatorSteps: Step[] = steps.map((step): Step => ({
-    id: step.id,
-    label: step.label,
-    status:
-      step.id < currentStep
-        ? "completed"
-        : step.id === currentStep
-        ? "current"
-        : "upcoming",
-  }))
+  } = core
 
   if (!storeType) {
     return (
@@ -82,14 +55,14 @@ export default function StoreCreatePage() {
               <div className="grid w-full gap-3 sm:grid-cols-2">
                 <Button
                   className="w-full justify-start gap-3 bg-emerald-600 text-white hover:bg-emerald-700"
-                  onClick={() => handleSelectStoreType("Nisit")}
+                  onClick={() => createStep.selectStoreType("Nisit")}
                 >
                   Student store
                 </Button>
                 <Button
                   variant="outline"
                   className="w-full justify-start gap-3 border-emerald-200 text-emerald-700 hover:bg-emerald-50"
-                  onClick={() => handleSelectStoreType("Club")}
+                  onClick={() => createStep.selectStoreType("Club")}
                 >
                   Organization store
                 </Button>
@@ -109,6 +82,16 @@ export default function StoreCreatePage() {
   }
 
   const allowCreateSubmit = !storeStatus || storeStatus.state === "CreateStore"
+  const handleFinalSubmit = () =>
+    productStep.submitAll({
+      storeStatus,
+      storeName: createStep.storeName,
+      members: createStep.members,
+      layoutDescription: storeDetailsStep.layoutDescription,
+      layoutFile: storeDetailsStep.layoutFile,
+      products: productStep.products,
+      clubInfo: clubStep.clubInfo,
+    })
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-emerald-100 px-4 py-12">
@@ -132,20 +115,20 @@ export default function StoreCreatePage() {
               </p>
             )}
           </div>
-          <StepIndicator steps={stepIndicatorSteps} />
+          <StepIndicator steps={steps} />
         </header>
 
         {currentStep === 1 && (
           <StepOneForm
-            storeName={storeName}
-            members={members}
-            memberEmailStatuses={memberEmailStatuses}
-            onStoreNameChange={(v) => wizard.setStoreName(v)}
-            onMemberChange={handleMemberChange}
-            onAddMember={handleAddMember}
-            onRemoveMember={handleRemoveMember}
-            onNext={handleCreateStore}
-            saving={saving}
+            storeName={createStep.storeName}
+            members={createStep.members}
+            memberEmailStatuses={createStep.memberEmailStatuses}
+            onStoreNameChange={createStep.setStoreName}
+            onMemberChange={createStep.handleMemberChange}
+            onAddMember={createStep.addMember}
+            onRemoveMember={createStep.removeMember}
+            onNext={createStep.submitCreateStore}
+            saving={createStep.isSubmitting}
             canSubmit={allowCreateSubmit}
             errorMessage={stepError ?? undefined}
           />
@@ -160,46 +143,46 @@ export default function StoreCreatePage() {
             presidentEmail={clubInfo.presidentEmail}
             presidentPhone={clubInfo.presidentPhone}
             applicationFileName={clubInfo.applicationFileName}
-            onOrganizationNameChange={(v) => handleClubInfoFieldChange("organizationName", v)}
-            onPresidentFirstNameChange={(v) => handleClubInfoFieldChange("presidentFirstName", v)}
-            onPresidentLastNameChange={(v) => handleClubInfoFieldChange("presidentLastName", v)}
-            onpresidentNisitIdChange={(v) => handleClubInfoFieldChange("presidentNisitId", v)}
-            onPresidentEmailChange={(v) => handleClubInfoFieldChange("presidentEmail", v)}
-            onPresidentPhoneChange={(v) => handleClubInfoFieldChange("presidentPhone", v)}
-            onApplicationFileChange={handleClubApplicationFileChange}
-            onBack={() => updateStepParam(currentStep - 1)}
-            onNext={handleSaveClubInfo}
-            saving={saving}
+            onOrganizationNameChange={(value) => clubStep.updateField("organizationName", value)}
+            onPresidentFirstNameChange={(value) => clubStep.updateField("presidentFirstName", value)}
+            onPresidentLastNameChange={(value) => clubStep.updateField("presidentLastName", value)}
+            onpresidentNisitIdChange={(value) => clubStep.updateField("presidentNisitId", value)}
+            onPresidentEmailChange={(value) => clubStep.updateField("presidentEmail", value)}
+            onPresidentPhoneChange={(value) => clubStep.updateField("presidentPhone", value)}
+            onApplicationFileChange={clubStep.updateApplicationFile}
+            onBack={() => core.goToStep(currentStep - 1)}
+            onNext={clubStep.submitClubInfo}
+            saving={clubStep.isSubmitting}
           />
         )}
 
         {currentStep === layoutStepIndex && (
           <StepTwoForm
-            layoutDescription={layoutDescription}
-            layoutFileName={layoutFile?.name ?? null}
-            onDescriptionChange={wizard.setLayoutDescription}
-            onFileChange={wizard.setLayoutFile}
-            onBack={() => updateStepParam(currentStep - 1)}
-            onNext={() => handleSimulatedSave(currentStep + 1)}
-            saving={saving}
+            layoutDescription={storeDetailsStep.layoutDescription}
+            layoutFileName={storeDetailsStep.layoutFile?.name ?? null}
+            onDescriptionChange={storeDetailsStep.setLayoutDescription}
+            onFileChange={storeDetailsStep.setLayoutFile}
+            onBack={() => core.goToStep(currentStep - 1)}
+            onNext={storeDetailsStep.saveAndContinue}
+            saving={storeDetailsStep.isSaving}
           />
         )}
 
         {currentStep === productStepIndex && (
           <StepThreeForm
-            products={products.map(({ id, name, price, fileName }) => ({
+            products={productStep.products.map(({ id, name, price, fileName }) => ({
               id,
               name,
               price,
               fileName,
             }))}
-            onProductChange={handleProductChange}
-            onProductFileChange={handleProductFileChange}
-            onAddProduct={handleAddProduct}
-            onRemoveProduct={handleRemoveProduct}
-            onBack={() => updateStepParam(currentStep - 1)}
+            onProductChange={productStep.handleProductChange}
+            onProductFileChange={productStep.handleProductFileChange}
+            onAddProduct={productStep.addProduct}
+            onRemoveProduct={productStep.removeProduct}
+            onBack={() => core.goToStep(currentStep - 1)}
             onSubmitAll={handleFinalSubmit}
-            saving={saving}
+            saving={productStep.isSubmitting}
           />
         )}
       </div>

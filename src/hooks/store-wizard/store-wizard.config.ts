@@ -66,8 +66,9 @@ export const preferredStepForState = (type: StoreType, state: StoreState): numbe
     case "ClubInfo":
       return 2
     case "StoreDetails":
-      return type === "Club" ? 2 : getLayoutStepIndex(type)
+      return getLayoutStepIndex(type)
     case "ProductDetails":
+      return getLayoutStepIndex(type)
     case "Submitted":
       return getProductStepIndex(type)
     default:
@@ -75,7 +76,7 @@ export const preferredStepForState = (type: StoreType, state: StoreState): numbe
   }
 }
 
-// map step → draft key
+// map step to draft key
 export const stepToDraftKey = (type: StoreType, step: number): string | null => {
   if (step === 1) return "create-store"
   if (type === "Club" && step === 2) return "club-info"
