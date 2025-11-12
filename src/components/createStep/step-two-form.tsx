@@ -1,11 +1,11 @@
-"use client"
+﻿"use client"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { UploadCloud } from "lucide-react"
+import Image from "next/image"
 
 type StepTwoFormProps = {
   layoutDescription: string
@@ -26,6 +26,9 @@ export function StepTwoForm({
   onNext,
   saving,
 }: StepTwoFormProps) {
+  void layoutDescription
+  void onDescriptionChange
+
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     onNext()
@@ -36,17 +39,25 @@ export function StepTwoForm({
       <CardHeader>
         <CardTitle className="text-emerald-800">รายละเอียดร้านค้า</CardTitle>
       </CardHeader>
+
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="layoutDescription">รูปการจัดการพื้นที่บูธ (ตัวอย่าง)</Label>
-            <Textarea
-              id="layoutDescription"
-              rows={6}
-              placeholder="อธิบายโครงร่างพื้นที่บูธ เช่น ตำแหน่งสินค้า เคาน์เตอร์ หรือลูกเล่นสำหรับผู้ชม"
-              value={layoutDescription}
-              onChange={(event) => onDescriptionChange(event.target.value)}
-            />
+            {/* เปลี่ยนจาก Label -> p เพราะไม่มี input ที่อ้างถึงจริง */}
+            <p className="text-sm font-medium text-emerald-900">
+              รูปการจัดการพื้นที่บูธ (ตัวอย่าง)
+            </p>
+            <div className="overflow-hidden rounded-2xl border border-emerald-100 bg-white/80 shadow-inner">
+              <Image
+                src="/layoutStore.png"
+                alt="layout store reference"
+                width={531}
+                height={564}
+                sizes="(min-width: 768px) 531px, 100vw"
+                className="h-auto w-full object-contain"
+                priority
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -68,13 +79,14 @@ export function StepTwoForm({
                 onFileChange(file)
               }}
             />
-            <p className="text-xs text-emerald-600">
+            <p id="layoutFileHelp" className="text-xs text-emerald-600">
               แนบไฟล์สำหรับการนำเสนอรูปแบบพื้นที่ ไม่เกิน 10 MB
             </p>
           </div>
         </CardContent>
 
-        <CardFooter className="flex justify-between">
+        {/* เว้นระยะด้านบนให้ปุ่มด้วย pt-6 */}
+        <CardFooter className="flex justify-between pt-6">
           <Button
             type="button"
             variant="outline"

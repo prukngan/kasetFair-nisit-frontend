@@ -8,6 +8,7 @@ export const STEP_LABELS = {
   clubInfo: "Organization information",
   storeDetails: "Store information",
   productDetails: "Product information",
+  commitStatus: "Submission status",
 } as const
 
 export const STEP_CONFIG_BY_TYPE: Record<StoreType, Array<{ id: number; label: string }>> = {
@@ -15,12 +16,14 @@ export const STEP_CONFIG_BY_TYPE: Record<StoreType, Array<{ id: number; label: s
     { id: 1, label: STEP_LABELS.createStore },
     { id: 2, label: STEP_LABELS.storeDetails },
     { id: 3, label: STEP_LABELS.productDetails },
+    { id: 4, label: STEP_LABELS.commitStatus },
   ],
   Club: [
     { id: 1, label: STEP_LABELS.createStore },
     { id: 2, label: STEP_LABELS.clubInfo },
     { id: 3, label: STEP_LABELS.storeDetails },
     { id: 4, label: STEP_LABELS.productDetails },
+    { id: 5, label: STEP_LABELS.commitStatus },
   ],
 }
 

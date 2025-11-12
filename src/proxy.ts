@@ -3,7 +3,7 @@ import { jwtVerify, decodeJwt, type JWTPayload } from "jose"
 
 const PUBLIC_WHEN_UNAUTH = ["/login", "/auth/processing", "/_health"]
 const BLOCK_WHEN_AUTH = ["/login", "/register", "/auth/processing"]
-const STATIC_PREFIXES = ["/_next", "/assets"]
+const STATIC_PREFIXES = ["/_next", "/assets", "/favicon.ico", "/layoutStore.png"];
 const STATIC_PATHS = new Set(["/favicon.ico"])
 const ACCESS_TOKEN_COOKIE = "access_token"
 
