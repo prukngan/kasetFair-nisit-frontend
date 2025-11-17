@@ -14,7 +14,7 @@ type FormState = {
   lastName: string
   nisitId: string
   phone: string
-  nisitCardLink: string
+  nisitCardMediaId: string
 }
 
 export default function EditNisitPage() {
@@ -24,7 +24,7 @@ export default function EditNisitPage() {
     lastName: "",
     nisitId: "",
     phone: "",
-    nisitCardLink: "",
+    nisitCardMediaId: "",
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -49,7 +49,7 @@ export default function EditNisitPage() {
           lastName: result.lastName ?? "",
           nisitId: result.nisitId ?? "",
           phone: result.phone ?? "",
-          nisitCardLink: result.nisitCardLink ?? "",
+          nisitCardMediaId: result.nisitCardMediaId ?? "",
         })
       } catch (err) {
         console.error(err)
@@ -178,7 +178,7 @@ export default function EditNisitPage() {
                 id="nisitCardLink"
                 name="nisitCardLink"
                 label="ลิงก์บัตรนิสิต"
-                value={formData.nisitCardLink}
+                value={formData.nisitCardMediaId}
                 disabled
               />
 

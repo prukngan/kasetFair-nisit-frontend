@@ -22,32 +22,39 @@ const STATUS_COLORS: Record<StepStatus, string> = {
 
 export function StepIndicator({ steps }: StepIndicatorProps) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-white/80 p-4 shadow-lg ring-1 ring-emerald-100">
-      {steps.map((step) => {
-        const tone = STATUS_COLORS[step.status]
-        return (
-          <div key={step.id} className="flex flex-1 min-w-[120px] flex-col items-center gap-2">
+    <div>
+      <div className="flex flex-wrap items-center justify-center rounded-2xl bg-white/80 p-4 shadow-lg ring-1 ring-emerald-100 gap-4">
+        {steps.map((step) => {
+          const tone = STATUS_COLORS[step.status]
+          return (
             <div
-              className={cn(
-                "flex size-10 items-center justify-center rounded-full text-sm font-semibold text-white transition-colors",
-                tone
-              )}
+              key={step.id}
+              className="flex flex-1 min-w-[70px] flex-col items-center gap-2"
             >
-              {step.id}
+              <div
+                className={cn(
+                  "flex size-8 md:size-10 items-center justify-center rounded-full text-xs md:text-sm font-semibold text-white transition-colors",
+                  tone
+                )}
+              >
+                {step.id}
+              </div>
+
+              <span
+                className={cn(
+                  "text-xs md:text-sm font-medium text-center whitespace-nowrap",
+                  step.status === "upcoming" && "text-gray-500",
+                  step.status === "completed" && "text-emerald-700",
+                  step.status === "current" && "text-amber-700"
+                )}
+              >
+                {step.label}
+              </span>
             </div>
-            <span
-              className={cn(
-                "text-sm font-medium text-center",
-                step.status === "upcoming" && "text-gray-500",
-                step.status === "completed" && "text-emerald-700",
-                step.status === "current" && "text-amber-700"
-              )}
-            >
-              {step.label}
-            </span>
-          </div>
-        )
-      })}
+          )
+        })}
+      </div>
     </div>
   )
 }
+

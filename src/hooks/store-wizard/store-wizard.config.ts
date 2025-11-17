@@ -3,11 +3,12 @@ import { StoreType, StoreState } from "@/services/dto/store-info.dto"
 // step config + helper
 
 export const STEP_LABELS = {
-  createStore: "Create store",
-  storeDetails: "Store information",
-  productDetails: "Product information",
-  commitStatus: "Submission status",
+  createStore: "สร้างร้านค้า",
+  storeDetails: "ข้อมูลร้านค้า",
+  productDetails: "ข้อมูลสินค้า",
+  commitStatus: "สถานะการส่งข้อมูล",
 } as const
+
 
 export const STEP_CONFIG_BY_TYPE: Record<StoreType, Array<{ id: number; label: string }>> = {
   Nisit: [

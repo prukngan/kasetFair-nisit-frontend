@@ -44,34 +44,43 @@ export function StepOneForm({
 
   return (
     <Card className="border-emerald-100 bg-white/90 shadow-xl">
-      <CardHeader>
-        <CardTitle className="text-emerald-800">Create your store team</CardTitle>
+      <CardHeader className="-mb-2">
+        <CardTitle className="text-emerald-800 text-xl font-bold">
+          สร้างทีมร้านค้า
+        </CardTitle>
       </CardHeader>
+
       <form onSubmit={handleSubmit}>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-4">
           {errorMessage && (
             <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700 whitespace-pre-line">
               {errorMessage}
             </div>
           )}
 
+          {/* STORE NAME */}
           <div className="space-y-2">
-            <Label htmlFor="storeName">Store name</Label>
+            <Label htmlFor="storeName" className="font-semibold text-[15px] text-emerald-900">
+              ชื่อร้าน
+            </Label>
             <Input
               id="storeName"
               value={storeName}
               onChange={(event) => onStoreNameChange(event.target.value)}
-              placeholder="Kaset Fair Store"
+              placeholder="เช่น Kaset Fair Drinks"
               required
             />
           </div>
 
+          {/* MEMBERS */}
           <div className="space-y-3">
             <div>
-              <Label>Member emails</Label>
-              <p className="mt-1 text-sm text-emerald-700">
-                Invite at least 3 members using their KU Gmail accounts. You can add more teammates at any
-                time.
+              <Label className="font-semibold text-[15px] text-emerald-900">
+                อีเมลสมาชิก
+              </Label>
+              <p className="mt-1 text-sm text-emerald-700 leading-relaxed">
+                เพิ่มสมาชิกอย่างน้อย 3 คน โดยใช้อีเมล KU Gmail (xxx@ku.th)
+                <br />สามารถเพิ่มได้ภายหลัง
               </p>
             </div>
 
@@ -87,13 +96,13 @@ export function StepOneForm({
                   <div key={`member-${index}`} className="space-y-1">
                     {showWarning && (
                       <p className="text-xs text-red-600 ml-1">
-                        This email is currently <strong>{emailStatus.status}</strong>.
+                        สถานะปัจจุบัน: <strong>{emailStatus.status}</strong>
                       </p>
                     )}
                     <div className="flex items-center gap-3">
                       <Input
                         type="email"
-                        placeholder={`Member email ${index + 1}`}
+                        placeholder={`อีเมลสมาชิกคนที่ ${index + 1}`}
                         value={member}
                         onChange={(event) => onMemberChange(index, event.target.value)}
                         required={index < 3}
@@ -127,21 +136,22 @@ export function StepOneForm({
               onClick={onAddMember}
             >
               <Plus className="h-4 w-4" />
-              Add another member
+              เพิ่มสมาชิก
             </Button>
           </div>
         </CardContent>
 
-        <CardFooter className="flex justify-end">
+        <CardFooter className="flex justify-end mt-6">
           <Button
             type="submit"
             className="bg-emerald-600 text-white hover:bg-emerald-700"
             disabled={submitDisabled}
           >
-            {saving ? "Saving..." : "Next"}
+            {saving ? "กำลังบันทึก..." : "บันทึกและไปขั้นถัดไป"}
           </Button>
         </CardFooter>
       </form>
     </Card>
   )
+
 }

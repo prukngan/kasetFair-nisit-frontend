@@ -19,6 +19,7 @@ import { extractErrorMessage } from "@/services/storeServices"
 import type { StorePendingValidationResponseDto } from "@/services/dto/store-info.dto"
 import { useRouter } from "next/navigation"
 import { Plus, Trash2, UploadCloud, CheckCircle } from "lucide-react"
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
 
 export default function StoreCreatePage() {
   const router = useRouter()
@@ -173,27 +174,32 @@ export default function StoreCreatePage() {
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-emerald-100 px-4 py-12">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
         {currentStep !== commitStepIndex && (
-          <header className="space-y-6">
-            <div>
-              <h1 className="text-3xl font-bold text-emerald-800">
-                Kaset Fair store registration
-              </h1>
-              <p className="mt-2 text-sm text-emerald-700">
-                Complete the steps below. You can return later.
-              </p>
+          <Card className="border-emerald-100 shadow-md bg-white/90">
+            <CardHeader>
+              <CardTitle className="text-emerald-800 text-2xl font-bold">
+                ลงทะเบียนร้านสำหรับงาน Kaset Fair
+              </CardTitle>
+              <CardDescription className="text-emerald-700">
+                กรุณากรอกขั้นตอนด้านล่างให้ครบ คุณสามารถกลับมาแก้ไขภายหลังได้
+              </CardDescription>
+
               {storeStatus && (
                 <p className="mt-2 text-xs uppercase tracking-wide text-emerald-600">
-                  Current state: {storeStatus.state}
+                  สถานะปัจจุบัน: {storeStatus.state}
                 </p>
               )}
+
               {stepError && (
                 <p className="mt-2 text-xs text-red-600">
                   {stepError}
                 </p>
               )}
-            </div>
-            <StepIndicator steps={steps} />
-          </header>
+            </CardHeader>
+
+            <CardContent>
+              <StepIndicator steps={steps} />
+            </CardContent>
+          </Card>
         )}
 
         {currentStep === 1 && (
