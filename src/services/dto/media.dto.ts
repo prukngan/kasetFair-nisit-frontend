@@ -1,8 +1,9 @@
 export enum MediaPurpose {
-  NISIT_CARD = 'nisit-card',
-  STORE_BOOTH_LAYOUT = 'store-booth-layout',
-  STORE_GOODS = 'store-goods',
-  CLUB_APPLICATION = 'club-application',
+  NISIT_CARD = "NISIT_CARD",
+  STORE_LAYOUT = "STORE_LAYOUT",
+  STORE_GOODS = "STORE_GOODS",
+  CLUB_APPLICATION = "CLUB_APPLICATION",
+  OTHER = "OTHER",
 }
 
 export type MediaRequestDto = {
