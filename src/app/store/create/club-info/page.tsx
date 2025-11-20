@@ -361,7 +361,7 @@ export default function ClubInfoPage() {
                   )}
 
                   <div className="space-y-2">
-                    <Label htmlFor="clubName">ชื่อองค์กรนิสิต</Label>
+                    <Label htmlFor="clubName">ชื่อองค์กรกิจกรรมนิสิต (ชมรม/กลุ่ม/ชุมนุม)</Label>
                     <Input
                       id="clubName"
                       value={values.clubName}
