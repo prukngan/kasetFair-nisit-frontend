@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2, ArrowRight, Shield } from "lucide-react"
 import { exchangeWithGoogleIdToken } from "@/services/authService"
+import { loginWithKU } from "@/services/authService"
 
 // --- utils ---
 const hasAppToken = () =>
@@ -132,7 +133,7 @@ function LoginForm() {
         )}
       </Button>
 
-      {/* <div className="mt-6 space-y-4">
+      <div className="mt-6 space-y-4">
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t border-gray-300" />
@@ -142,17 +143,15 @@ function LoginForm() {
           </div>
         </div>
 
-        <Link href="/admin/login">
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full border-emerald-200 text-emerald-700 hover:bg-emerald-50 bg-transparent"
-          >
-            <Shield className="w-4 h-4 mr-2" />
-            Admin Login
-          </Button>
-        </Link>
-      </div> */}
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => loginWithKU()}
+          className="w-full border-emerald-200 text-emerald-700 hover:bg-emerald-50 bg-transparent"
+        >
+          KU All Login
+        </Button>
+      </div>
     </>
   )
 }

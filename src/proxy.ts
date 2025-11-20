@@ -115,24 +115,31 @@ export default async function proxy(req: NextRequest) {
     return res
   }
 
+  console.log(payload)
+
   // ถ้า profile ยังไม่ complete
-  if (!payload?.profileComplete) {
-    // ปล่อย API ไปเลย (เพราะ register page ต้องยิง /api/* ได้ เช่น media, nisit ฯลฯ)
+  const requiredFields = ["firstName", "lastName", "email", "nisitId", "phone"];
+  const profileIncomplete =
+    !payload ||
+    requiredFields.some((key) => !payload[key as keyof typeof payload]) ||
+    !payload.profileComplete;
+
+  if (profileIncomplete) {
     if (!isApi) {
       const allowedPage =
-        path.startsWith("/register") || path.startsWith("/auth/processing")
+        path.startsWith("/register") || path.startsWith("/auth/processing");
 
       if (!allowedPage) {
-        const target = url.clone()
-        target.pathname = "/register"
-        target.search = ""
-        if (target.href !== url.href) return NextResponse.redirect(target)
+        const target = url.clone();
+        target.pathname = "/register";
+        target.search = "";
+        if (target.href !== url.href) return NextResponse.redirect(target);
       }
     }
 
-    return NextResponse.next()
+    return NextResponse.next();
   }
-  
+
   // บล็อคหน้าที่ไม่ควรเข้าเมื่อ auth แล้ว
   if (isPathStartsWith(path, BLOCK_WHEN_AUTH)) {
     const target = url.clone()

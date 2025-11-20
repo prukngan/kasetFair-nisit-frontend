@@ -136,9 +136,7 @@ export default function EditNisitPage() {
                 label="ชื่อ"
                 value={formData.firstName}
                 onChange={handleChange}
-                disabled={saving}
-                autoComplete="given-name"
-                required
+                disabled
               />
 
               <Field
@@ -147,9 +145,7 @@ export default function EditNisitPage() {
                 label="นามสกุล"
                 value={formData.lastName}
                 onChange={handleChange}
-                disabled={saving}
-                autoComplete="family-name"
-                required
+                disabled
               />
 
               <Field

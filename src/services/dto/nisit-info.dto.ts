@@ -17,4 +17,5 @@ export type UpdateNisitInfoPayload = {
   firstName?: string
   lastName?: string
   phone?: string
+  nisitCardMediaId?: string
 }

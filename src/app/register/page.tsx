@@ -9,9 +9,10 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { createNisitInfo } from "@/services/nisitService"
+import { createNisitInfo, updateNisitInfo } from "@/services/nisitService"
 import { uploadMedia } from "@/services/mediaService"
 import { MediaPurpose } from "@/services/dto/media.dto"
+import { getNisitInfo } from "@/services/nisitService"
 
 // ⬇️ เพิ่ม dialog ของ shadcn
 import {
@@ -77,8 +78,68 @@ export default function RegisterPage() {
   const [consentChecked, setConsentChecked] = useState(false)
   const [consentText, setConsentText] = useState<ConsentText | null>(null)
 
+  const [locked, setLocked] = useState({
+    firstName: false,
+    lastName: false,
+    nisitId: false,
+    phone: false,
+    nisitCard: false, // true = ไม่ให้เปลี่ยนไฟล์
+  })
+
+  useEffect(() => {
+    // if (status !== "authenticated") return
+
+    let cancelled = false
+    ;(async () => {
+      try {
+        // 1) ดึงจาก API เป็นหลัก
+        const existing = await getNisitInfo().catch(() => null)
+
+        // 2) fallback จาก session payload (กรณี backend เคยยัดมาให้ใน token)
+        const tokenAny = (data as any) ?? {}
+        const fromToken = {
+          firstName: tokenAny.firstName ?? null,
+          lastName: tokenAny.lastName ?? null,
+          nisitId: tokenAny.nisitId ?? null,
+          phone: tokenAny.phone ?? null,
+        }
+
+        // merge priority: API > token > current state
+        const merged = {
+          firstName: existing?.firstName ?? fromToken.firstName ?? formData.firstName,
+          lastName:  existing?.lastName  ?? fromToken.lastName  ?? formData.lastName,
+          nisitId:   existing?.nisitId   ?? fromToken.nisitId   ?? formData.nisitId,
+          phone:     existing?.phone     ?? fromToken.phone     ?? formData.phone,
+        }
+
+        const mediaId = existing?.nisitCardMediaId ?? null
+
+        if (!cancelled) {
+          setFormData(merged)
+          setNisitCardMediaId(mediaId)
+
+          setLocked({
+            firstName: !!merged.firstName,
+            lastName:  !!merged.lastName,
+            nisitId:   !!merged.nisitId,
+            phone:     !!merged.phone,
+            nisitCard: !!mediaId, // ถ้ามีไฟล์แล้ว → ล็อกอัปโหลด
+          })
+        }
+      } catch {
+        // เงียบ ๆ ไป ไม่บล็อกการลงทะเบียนใหม่
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [status, data]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
+
+    if (locked[name as keyof typeof locked]) return
 
     if (fieldErrors[name as keyof FormErrors]) {
       setFieldErrors((prev) => ({ ...prev, [name]: undefined }))
@@ -134,28 +195,35 @@ export default function RegisterPage() {
   const validateForm = (): boolean => {
     const errors: FormErrors = {}
 
-    if (!formData.firstName.trim()) {
+    const need = (key: keyof FormState) =>
+      !(locked[key] && formData[key]) // ถ้าล็อกและมีค่าแล้ว → ไม่ต้องเช็ค
+
+    if (need("firstName") && !formData.firstName.trim()) {
       errors.firstName = "กรุณากรอกชื่อ"
     }
 
-    if (!formData.lastName.trim()) {
+    if (need("lastName") && !formData.lastName.trim()) {
       errors.lastName = "กรุณากรอกนามสกุล"
     }
 
-    if (!formData.nisitId.trim()) {
-      errors.nisitId = "กรุณากรอกรหัสนิสิต"
-    } else if (formData.nisitId.length !== 10) {
-      errors.nisitId = "รหัสนิสิตต้องมี 10 หลัก"
+    if (need("nisitId")) {
+      if (!formData.nisitId.trim()) {
+        errors.nisitId = "กรุณากรอกรหัสนิสิต"
+      } else if (formData.nisitId.length !== 10) {
+        errors.nisitId = "รหัสนิสิตต้องมี 10 หลัก"
+      }
     }
 
-    const phoneOk = /^0[0-9]{9}$/.test(formData.phone)
-    if (!formData.phone.trim()) {
-      errors.phone = "กรุณากรอกเบอร์โทร"
-    } else if (!phoneOk) {
-      errors.phone = "เบอร์โทรต้องมี 10 หลัก และขึ้นต้นด้วย 0"
+    if (need("phone")) {
+      const phoneOk = /^0[0-9]{9}$/.test(formData.phone)
+      if (!formData.phone.trim()) {
+        errors.phone = "กรุณากรอกเบอร์โทร"
+      } else if (!phoneOk) {
+        errors.phone = "เบอร์โทรต้องมี 10 หลัก และขึ้นต้นด้วย 0"
+      }
     }
 
-    if (!nisitCardFile) {
+    if (!locked.nisitCard && !nisitCardFile) {
       errors.nisitCard = "กรุณาอัปโหลดรูปบัตรนิสิต"
     }
 
@@ -313,6 +381,7 @@ export default function RegisterPage() {
                   value={formData.firstName}
                   onChange={handleInputChange}
                   disabled={isLoading || uploadingCard}
+                  readOnly={locked.firstName}
                   autoComplete="given-name"
                   error={fieldErrors.firstName}
                   required
@@ -325,6 +394,7 @@ export default function RegisterPage() {
                   value={formData.lastName}
                   onChange={handleInputChange}
                   disabled={isLoading || uploadingCard}
+                  readOnly={locked.lastName}
                   autoComplete="family-name"
                   error={fieldErrors.lastName}
                   required
@@ -337,6 +407,7 @@ export default function RegisterPage() {
                   value={formData.nisitId}
                   onChange={handleInputChange}
                   disabled={isLoading || uploadingCard}
+                  readOnly={locked.nisitId}
                   autoComplete="student-id"
                   error={fieldErrors.nisitId}
                   required
@@ -349,6 +420,7 @@ export default function RegisterPage() {
                   value={formData.phone}
                   onChange={handleInputChange}
                   disabled={isLoading || uploadingCard}
+                  readOnly={locked.phone}
                   type="tel"
                   inputMode="numeric"
                   placeholder="08xxxxxxxx"
@@ -363,30 +435,34 @@ export default function RegisterPage() {
                   >
                     อัปโหลดรูปบัตรนิสิต
                   </Label>
-                  <Input
-                    id="nisitCard"
-                    name="nisitCard"
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,application/pdf"
-                    disabled={isLoading || uploadingCard}
-                    onChange={handleFileChange}
-                    className={fieldErrors.nisitCard ? "border-red-500" : ""}
-                    required
-                  />
-                  {uploadingCard && (
-                    <p className="text-xs text-emerald-600">
-                      กำลังอัปโหลดรูปบัตรนิสิต…
-                    </p>
-                  )}
-                  {nisitCardFile && !uploadingCard && (
-                    <p className="text-xs text-emerald-700">
-                      ใช้ไฟล์: {nisitCardFile.name}
-                    </p>
-                  )}
-                  {fieldErrors.nisitCard && (
-                    <p className="text-xs text-red-600">
-                      {fieldErrors.nisitCard}
-                    </p>
+
+                  {/* ถ้ามี mediaId แล้ว → แสดงว่า “อัปโหลดแล้ว” และห้ามเปลี่ยน */}
+                  {locked.nisitCard ? (
+                    <div className="rounded-md border border-emerald-200 bg-emerald-50 p-2 text-sm text-emerald-700">
+                      อัปโหลดเรียบร้อยแล้ว (แก้ไขไม่ได้)
+                    </div>
+                  ) : (
+                    <>
+                      <Input
+                        id="nisitCard"
+                        name="nisitCard"
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,application/pdf"
+                        disabled={isLoading || uploadingCard}
+                        onChange={handleFileChange}
+                        className={fieldErrors.nisitCard ? "border-red-500" : ""}
+                        required
+                      />
+                      {uploadingCard && (
+                        <p className="text-xs text-emerald-600">กำลังอัปโหลดรูปบัตรนิสิต…</p>
+                      )}
+                      {nisitCardFile && !uploadingCard && (
+                        <p className="text-xs text-emerald-700">ใช้ไฟล์: {nisitCardFile.name}</p>
+                      )}
+                      {fieldErrors.nisitCard && (
+                        <p className="text-xs text-red-600">{fieldErrors.nisitCard}</p>
+                      )}
+                    </>
                   )}
                 </div>
 
@@ -486,6 +562,7 @@ function Field(props: {
   value: string
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
   disabled?: boolean
+  readOnly?: boolean
   required?: boolean
   type?: string
   inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"]
@@ -500,6 +577,7 @@ function Field(props: {
     value,
     onChange,
     disabled,
+    readOnly,
     required,
     type = "text",
     inputMode,
@@ -507,6 +585,10 @@ function Field(props: {
     autoComplete,
     error,
   } = props
+
+  const lockedStyle = readOnly
+    ? "bg-gray-50 text-gray-700 border-gray-200"
+    : ""
 
   return (
     <div className="space-y-2">
@@ -519,6 +601,7 @@ function Field(props: {
         value={value}
         onChange={onChange}
         disabled={disabled}
+        readOnly={readOnly}
         required={required}
         type={type}
         inputMode={inputMode}
