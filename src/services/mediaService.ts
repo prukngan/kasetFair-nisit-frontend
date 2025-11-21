@@ -2,6 +2,7 @@ import { http } from "@/lib/http"
 import { AxiosError } from "axios";
 import { MediaPurpose } from "@/services/dto/media.dto"
 import { MediaRequestDto, MediaResponseDto } from "@/services/dto/media.dto"
+import { MediaInfoDto } from "@/services/dto/media.dto"
 
 const MEDIA_S3_SERVICE_API = `/api/media/s3`;
 const MEDIA_SERVICE_API = `/api/media`;
@@ -107,5 +108,15 @@ export async function listMediaFromS3(prefix?: string) {
     : `/api/media/s3/list`
 
   const res = await http.get(url)
+  return res.data
+}
+
+export async function deleteMediaFromS3(mediaId: string) {
+  const res = await http.delete(`/api/media/s3/${mediaId}`)
+  return res.data
+}
+
+export async function getMediaUrl(mediaId: string): Promise<MediaInfoDto> {
+  const res = await http.get(`/api/media/s3/${mediaId}`)
   return res.data
 }

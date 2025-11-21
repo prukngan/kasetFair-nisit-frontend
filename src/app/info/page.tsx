@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
@@ -8,6 +10,9 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { getNisitInfo, updateNisitInfo } from "@/services/nisitService"
 import type { NisitInfo } from "@/services/dto/nisit-info.dto"
+import { GoogleFileUpload } from "@/components/uploadFile"
+import { getMediaUrl, uploadMedia, uploadMediaViaPresign } from "@/services/mediaService"
+import { MediaPurpose } from "@/services/dto/media.dto"
 
 type FormState = {
   firstName: string
@@ -15,6 +20,14 @@ type FormState = {
   nisitId: string
   phone: string
   nisitCardMediaId: string
+}
+
+type InitialUploadedFile = {
+  id: string
+  name: string
+  url: string
+  size?: number
+  type?: string
 }
 
 export default function EditNisitPage() {
@@ -26,10 +39,13 @@ export default function EditNisitPage() {
     phone: "",
     nisitCardMediaId: "",
   })
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [initialCardUploadedFiles, setInitialCardUploadedFiles] = useState<InitialUploadedFile[]>([])
+
   const hasFetched = useRef(false)
 
   useEffect(() => {
@@ -51,6 +67,21 @@ export default function EditNisitPage() {
           phone: result.phone ?? "",
           nisitCardMediaId: result.nisitCardMediaId ?? "",
         })
+        if (result.nisitCardMediaId) {
+
+          const mediaRes = await getMediaUrl(result.nisitCardMediaId)
+
+          setInitialCardUploadedFiles([
+            {
+              id: result.nisitCardMediaId,
+              name: mediaRes.originalName ?? "card_name", // Placeholder name
+              url: mediaRes.link ?? "",
+              size: mediaRes.size,
+              type: mediaRes.mimeType,
+            },
+          ])
+        }
+
       } catch (err) {
         console.error(err)
         setError("เกิดข้อผิดพลาดระหว่างโหลดข้อมูล กรุณาลองใหม่")
@@ -71,6 +102,10 @@ export default function EditNisitPage() {
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
+  const handleFilesChange = (files: File[]) => {
+    setUploadedFiles(files)
+  }
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (saving) return
@@ -86,11 +121,29 @@ export default function EditNisitPage() {
     setSuccess(false)
 
     try {
+      let nisitCardMediaId = formData.nisitCardMediaId
+
+      if (uploadedFiles.length > 0) {
+        const uploadRes = await uploadMediaViaPresign({
+          purpose: MediaPurpose.NISIT_CARD,
+          file: uploadedFiles[0],
+        })
+
+        if (!uploadRes?.mediaId) {
+          throw new Error("Upload failed")
+        }
+
+        nisitCardMediaId = uploadRes.mediaId
+        setFormData((prev) => ({ ...prev, nisitCardMediaId }))
+      }
+
       const payload = {
         firstName: formData.firstName.trim(),
         lastName: formData.lastName.trim(),
         phone: formData.phone.trim(),
+        ...(nisitCardMediaId ? { nisitCardMediaId } : {}),
       }
+
       const result = await updateNisitInfo(payload)
       if (!result) {
         setError("ไม่สามารถบันทึกข้อมูลได้ กรุณาลองใหม่")
@@ -122,9 +175,7 @@ export default function EditNisitPage() {
       <div className="w-full max-w-xl">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-emerald-800 mb-2">แก้ไขข้อมูลนิสิต</h1>
-          <p className="text-emerald-600">
-            ปรับปรุงข้อมูลส่วนตัวให้ถูกต้อง เพื่อการติดต่อจากทีมงาน Kaset Fair
-          </p>
+          <p className="text-emerald-600">ปรับปรุงข้อมูลส่วนตัวให้ถูกต้อง เพื่อการติดต่อจากทีมงาน Kaset Fair</p>
         </div>
 
         <Card className="border-emerald-200 shadow-lg">
@@ -148,13 +199,7 @@ export default function EditNisitPage() {
                 disabled
               />
 
-              <Field
-                id="nisitId"
-                name="nisitId"
-                label="รหัสนิสิต"
-                value={formData.nisitId}
-                disabled
-              />
+              <Field id="nisitId" name="nisitId" label="รหัสนิสิต" value={formData.nisitId} disabled />
 
               <Field
                 id="phone"
@@ -170,31 +215,34 @@ export default function EditNisitPage() {
                 required
               />
 
-              <Field
-                id="nisitCardLink"
-                name="nisitCardLink"
-                label="ลิงก์บัตรนิสิต"
-                value={formData.nisitCardMediaId}
-                disabled
-              />
+              <div className="space-y-2">
+                <Label htmlFor="nisitCard">บัตรนิสิต</Label>
+                <GoogleFileUpload
+                  maxFiles={1}
+                  accept="image/png,image/jpeg,image/jpg,image/webp,application/pdf"
+                  maxSize={5 * 1024 * 1024}
+                  onFilesChange={handleFilesChange}
+                  disabled={saving}
+                  initialFiles={initialCardUploadedFiles}
+                />
+                {/* {formData.nisitCardMediaId && uploadedFiles.length === 0 && (
+                  <p className="text-xs text-emerald-600">มีไฟล์อยู่แล้ว (ID: {formData.nisitCardMediaId})</p>
+                )} */}
+              </div>
 
               {error && (
                 <p role="alert" className="text-sm text-red-600">
                   {error}
                 </p>
               )}
-              {success && (
-                <p className="text-sm text-emerald-600">
-                  บันทึกข้อมูลเรียบร้อยแล้ว
-                </p>
-              )}
+              {success && <p className="text-sm text-emerald-600">บันทึกข้อมูลเรียบร้อยแล้ว</p>}
             </CardContent>
 
             <CardFooter className="flex justify-between gap-4">
               <Button
                 type="button"
                 variant="outline"
-                className="border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 bg-transparent"
                 onClick={handleBack}
                 disabled={saving}
               >

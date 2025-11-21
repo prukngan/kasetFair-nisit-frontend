@@ -14,3 +14,11 @@ export type MediaRequestDto = {
 export type MediaResponseDto = {
   id: string
 }
+
+export type MediaInfoDto = {
+  id: string
+  size?: number
+  mimeType?: string
+  originalName?: string
+  link?: string
+}
