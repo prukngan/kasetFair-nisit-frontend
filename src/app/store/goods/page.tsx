@@ -4,13 +4,10 @@ import type React from "react"
 
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useState } from "react"
-import { Loader2, Plus, Save, Trash2, ArrowLeft } from "lucide-react"
-
+import { Loader2, Plus, Save, Trash2, ArrowLeft, Utensils, ImageIcon, Pencil, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardHeader, CardContent, CardFooter, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-
 import type { GoodsResponseDto, GoodsType } from "@/services/dto/goods.dto"
 import { createGood, deleteGood, listGoods, updateGood, extractErrorMessage } from "@/services/storeServices"
 
@@ -44,6 +41,7 @@ export default function StoreGoodsPage() {
   const [goodFieldErrors, setGoodFieldErrors] = useState<Record<string, { name?: string; price?: string }>>({})
   const [savingAllGoods, setSavingAllGoods] = useState(false)
   const [goodRowErrors, setGoodRowErrors] = useState<Record<string, string>>({})
+  const [editingId, setEditingId] = useState<string | null>(null)
 
   const router = useRouter()
 
@@ -115,6 +113,28 @@ export default function StoreGoodsPage() {
     })
   }, [])
 
+  const handleStartEdit = (id: string) => {
+    setEditingId(id)
+    setGoodsError(null)
+    setGoodsMessage(null)
+  }
+
+  const handleCancelEdit = (id: string) => {
+    setEditingId(null)
+    // Reset draft to original value
+    const original = goods.find((g) => g.id === id)
+    if (original) {
+      setGoodDrafts((prev) => ({
+        ...prev,
+        [id]: {
+          name: original.name,
+          price: original.price.toString(),
+          type: original.type,
+        },
+      }))
+    }
+  }
+
   const handleSaveGood = async (goodId: string) => {
     const draft = goodDrafts[goodId]
     if (!draft) return
@@ -156,6 +176,8 @@ export default function StoreGoodsPage() {
       })
 
       setGoods((prev) => prev.map((good) => (good.id === goodId ? updated : good)))
+
+      setEditingId(null)
 
       setGoodFieldErrors((prev) => {
         const next = { ...prev }
@@ -364,184 +386,244 @@ export default function StoreGoodsPage() {
   )
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-emerald-100 px-4 py-10">
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
-        <header className="flex flex-wrap items-center justify-between gap-4 rounded-3xl bg-white/80 px-6 py-5 shadow-lg ring-1 ring-emerald-100 backdrop-blur">
-          <div className="flex items-center gap-3">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-emerald-100 px-4 py-8 pb-24">
+      <div className="mx-auto w-full max-w-6xl space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
             <Button
-                type="button"
-                variant="outline"
-                className="border-emerald-200 text-emerald-700 hover:bg-emerald-50"
-                onClick={() => router.push("/store")}
+              variant="ghost"
+              size="icon"
+              className="rounded-full hover:bg-white/50"
+              onClick={() => router.push("/store")}
             >
-                <ArrowLeft />
+              <ArrowLeft className="h-6 w-6 text-emerald-900" />
             </Button>
-
-            <div className="space-y-2">
-                <h1 className="mt-1 text-2xl font-semibold text-emerald-900">
-                    จัดการสินค้าในร้าน
-                </h1>
-                <p className="mt-1 text-sm text-emerald-700">
-                    เพิ่ม แก้ไข หรือลบรายการสินค้า พร้อมอัปเดตราคาได้จากหน้านี้
-                </p>
-            </div>
+            <h1 className="text-2xl font-bold text-emerald-900">รายการอาหาร</h1>
           </div>
-        </header>
+          <Button
+            onClick={(e) => handleSaveAllGoods(e as any)}
+            className="bg-emerald-600 text-white hover:bg-emerald-700 shadow-md rounded-full px-6"
+            disabled={savingAllGoods || loadingGoods}
+          >
+            {savingAllGoods ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                กำลังบันทึก...
+              </>
+            ) : (
+              <>
+                <Save className="mr-2 h-4 w-4" />
+                บันทึกการแก้ไข
+              </>
+            )}
+          </Button>
+        </div>
 
-        <Card className="border-emerald-100 bg-white/90 shadow-xl">
-          <CardHeader>
-            <CardTitle className="text-emerald-800">รายการสินค้า</CardTitle>
-          </CardHeader>
+        {goodsError && <div className="rounded-lg bg-red-50 p-4 text-red-600 border border-red-100">{goodsError}</div>}
+        {goodsMessage && (
+          <div className="rounded-lg bg-emerald-50 p-4 text-emerald-700 border border-emerald-100">{goodsMessage}</div>
+        )}
 
-          <form onSubmit={handleSaveAllGoods}>
-            <CardContent className="space-y-4">
-              {goodsError && <p className="text-sm text-red-600">{goodsError}</p>}
-              {goodsMessage && <p className="text-sm text-emerald-700">{goodsMessage}</p>}
+        {loadingGoods ? (
+          <div className="flex h-64 items-center justify-center">{renderLoading("กำลังโหลดรายการอาหาร...")}</div>
+        ) : (
+          <form
+            onSubmit={handleSaveAllGoods}
+            className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5"
+          >
+            {/* Existing Goods */}
+            {goods.map((good) => {
+              const draft = goodDrafts[good.id] ?? {
+                name: "",
+                price: "",
+                type: good.type,
+              }
+              const fieldErrors = goodFieldErrors[good.id]
+              const rowError = goodRowErrors[good.id]
+              const deleting = deletingGoodsMap[good.id]
+              const saving = savingGoodsMap[good.id]
+              const isEditing = editingId === good.id
 
-              {loadingGoods ? (
-                renderLoading("Loading goods...")
-              ) : (
-                <>
-                  <div className="grid grid-cols-[minmax(0,3fr)_minmax(0,1fr)_auto] items-center gap-3 text-sm text-gray-600">
-                    <span>ชื่อสินค้า</span>
-                    <span className="text-right">ราคา (บาท)</span>
-                    <span className="sr-only">actions</span>
+              return (
+                <Card
+                  key={good.id}
+                  className={`group relative overflow-hidden border-0 bg-white rounded-xl flex flex-col transition-all duration-200 ${
+                    isEditing ? "ring-2 ring-emerald-500 shadow-lg z-10" : "shadow-md hover:shadow-xl"
+                  }`}
+                >
+                  <div className="relative aspect-[4/3] w-full bg-gray-100 flex items-center justify-center overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/5 to-transparent" />
+                    <Utensils className="h-12 w-12 text-gray-300" />
+
+                    {!isEditing && (
+                      <Button
+                        type="button"
+                        size="icon"
+                        className="absolute bottom-2 right-2 h-8 w-8 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg transition-transform hover:scale-110 z-10"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleStartEdit(good.id)
+                        }}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
 
-                  <div className="space-y-3">
-                    {goods.map((good) => {
-                      const draft = goodDrafts[good.id] ?? {
-                        name: "",
-                        price: "",
-                        type: good.type,
-                      }
-                      const fieldErrors = goodFieldErrors[good.id]
-                      const rowError = goodRowErrors[good.id]
-
-                      return (
-                        <div
-                          key={good.id}
-                          className="grid grid-cols-[minmax(0,3fr)_minmax(0,1fr)_auto] items-start gap-3"
-                        >
-                          <div className="flex flex-col gap-1">
+                  <CardContent className="p-2 space-y-1.5 flex-1 flex flex-col">
+                    {isEditing ? (
+                      <>
+                        <div className="space-y-2">
+                          <div className="space-y-1">
+                            <label className="text-xs font-medium text-gray-500">ชื่อเมนู</label>
                             <Input
-                              placeholder="ชื่อสินค้า"
                               value={draft.name}
                               onChange={(e) => handleGoodDraftChange(good.id, "name", e.target.value)}
-                              required
-                              className={fieldErrors?.name ? "border-red-400 focus-visible:ring-red-400" : ""}
+                              placeholder="ชื่ออาหาร"
+                              className={`h-8 text-xs px-2 ${fieldErrors?.name ? "border-red-500" : ""}`}
+                              autoFocus
                             />
-                            {fieldErrors?.name && <p className="text-xs text-red-600">{fieldErrors.name}</p>}
                           </div>
 
-                          <div className="flex flex-col gap-1">
-                            <Input
-                              placeholder="ราคา (บาท)"
-                              value={draft.price}
-                              onChange={(e) => handleGoodDraftChange(good.id, "price", e.target.value)}
-                              inputMode="decimal"
-                              className={`text-right ${
-                                fieldErrors?.price ? "border-red-400 focus-visible:ring-red-400" : ""
-                              }`}
-                              required
-                            />
-                            {fieldErrors?.price && (
-                              <p className="text-xs text-red-600 text-right">{fieldErrors.price}</p>
-                            )}
+                          <div className="space-y-1">
+                            <label className="text-xs font-medium text-gray-500">ราคา</label>
+                            <div className="relative">
+                              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">฿</span>
+                              <Input
+                                value={draft.price}
+                                onChange={(e) => handleGoodDraftChange(good.id, "price", e.target.value)}
+                                placeholder="0"
+                                inputMode="decimal"
+                                className={`h-8 pl-5 text-xs ${fieldErrors?.price ? "border-red-500" : ""}`}
+                              />
+                            </div>
                           </div>
+                        </div>
 
+                        <div className="flex gap-1 pt-1 mt-auto">
                           <Button
                             type="button"
-                            variant="ghost"
-                            className="text-red-500 hover:bg-red-50"
+                            onClick={() => handleSaveGood(good.id)}
+                            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white h-7 text-[10px] px-0"
+                            disabled={saving}
+                          >
+                            {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : "บันทึก"}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="icon"
+                            className="h-7 w-7 rounded-md shrink-0"
                             onClick={() => handleDeleteGood(good.id)}
-                            disabled={goods.length === 0 && draftNewGoods.length === 1}
+                            disabled={deleting}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            {deleting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
                           </Button>
-
-                          {rowError && <p className="col-span-3 text-xs text-red-600">{rowError}</p>}
-                        </div>
-                      )
-                    })}
-
-                    {draftNewGoods.map((draft) => {
-                      const fieldErrors = goodFieldErrors[draft.tempId]
-                      const rowError = goodRowErrors[draft.tempId]
-
-                      return (
-                        <div
-                          key={draft.tempId}
-                          className="grid grid-cols-[minmax(0,3fr)_minmax(0,1fr)_auto] items-start gap-3"
-                        >
-                          <div className="flex flex-col gap-1">
-                            <Input
-                              placeholder="ชื่อสินค้า"
-                              value={draft.name}
-                              onChange={(e) => handleDraftNewGoodChange(draft.tempId, "name", e.target.value)}
-                              required
-                              className={fieldErrors?.name ? "border-red-400 focus-visible:ring-red-400" : ""}
-                            />
-                            {fieldErrors?.name && <p className="text-xs text-red-600">{fieldErrors.name}</p>}
-                          </div>
-
-                          <div className="flex flex-col gap-1">
-                            <Input
-                              placeholder="ราคา (บาท)"
-                              value={draft.price}
-                              onChange={(e) => handleDraftNewGoodChange(draft.tempId, "price", e.target.value)}
-                              inputMode="decimal"
-                              className={`text-right ${
-                                fieldErrors?.price ? "border-red-400 focus-visible:ring-red-400" : ""
-                              }`}
-                              required
-                            />
-                            {fieldErrors?.price && (
-                              <p className="text-xs text-red-600 text-right">{fieldErrors.price}</p>
-                            )}
-                          </div>
-
                           <Button
                             type="button"
-                            variant="ghost"
-                            className="text-red-500 hover:bg-red-50"
-                            onClick={() => handleRemoveDraftNewGood(draft.tempId)}
-                            disabled={goods.length === 0 && draftNewGoods.length === 1}
+                            variant="outline"
+                            onClick={() => handleCancelEdit(good.id)}
+                            className="h-7 w-7 p-0 shrink-0"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <X className="h-3 w-3" />
                           </Button>
-
-                          {rowError && <p className="col-span-3 text-xs text-red-600">{rowError}</p>}
                         </div>
-                      )
-                    })}
+                      </>
+                    ) : (
+                      <div
+                        className="flex flex-col h-full justify-between cursor-pointer"
+                        onClick={() => handleStartEdit(good.id)}
+                      >
+                        <div>
+                          <h3 className="font-semibold text-gray-900 line-clamp-2 leading-tight mb-1">
+                            {draft.name || <span className="text-gray-400 italic">ไม่มีชื่อ</span>}
+                          </h3>
+                        </div>
+                        <div className="flex items-end justify-between mt-2">
+                          <p className="text-lg font-bold text-emerald-600">฿{Number(draft.price).toLocaleString()}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {rowError && <p className="text-xs text-red-500 mt-1">{rowError}</p>}
+                  </CardContent>
+                </Card>
+              )
+            })}
+
+            {/* New Drafts */}
+            {draftNewGoods.map((draft) => {
+              const fieldErrors = goodFieldErrors[draft.tempId]
+              const rowError = goodRowErrors[draft.tempId]
+
+              return (
+                <Card
+                  key={draft.tempId}
+                  className="group relative overflow-hidden border-0 bg-white shadow-lg ring-2 ring-emerald-500/20 rounded-xl flex flex-col"
+                >
+                  <div className="relative aspect-[4/3] w-full bg-emerald-50 flex items-center justify-center overflow-hidden">
+                    <ImageIcon className="h-10 w-10 text-emerald-200" />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute top-2 right-2 h-8 w-8 rounded-full text-gray-400 hover:text-red-500 hover:bg-white/80"
+                      onClick={() => handleRemoveDraftNewGood(draft.tempId)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
 
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full border-dashed border-emerald-200 text-emerald-700 hover:bg-emerald-50 bg-transparent"
-                    onClick={handleAddDraftNewGood}
-                  >
-                    <Plus className="h-4 w-4" />
-                    เพิ่มรายการสินค้าใหม่
-                  </Button>
-                </>
-              )}
-            </CardContent>
+                  <CardContent className="p-4 space-y-3 flex-1 flex flex-col">
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-emerald-600">ชื่อเมนูใหม่</label>
+                      <Input
+                        value={draft.name}
+                        onChange={(e) => handleDraftNewGoodChange(draft.tempId, "name", e.target.value)}
+                        placeholder="ชื่อเมนูใหม่"
+                        className={`h-9 text-sm bg-emerald-50/50 ${
+                          fieldErrors?.name ? "border-red-500" : "border-emerald-100"
+                        }`}
+                        autoFocus
+                      />
+                      {fieldErrors?.name && <p className="text-xs text-red-500 px-1">{fieldErrors.name}</p>}
+                    </div>
 
-            <CardFooter className="mt-6 flex justify-end">
-              <Button
-                type="submit"
-                className="bg-emerald-600 text-white hover:bg-emerald-700"
-                disabled={savingAllGoods || loadingGoods}
-              >
-                <Save className="h-4 w-4" />
-                {savingAllGoods ? "กำลังบันทึกการเปลี่ยนแปลง..." : "บันทึกการเปลี่ยนแปลง"}
-              </Button>
-            </CardFooter>
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-emerald-600">ราคา</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600/70 text-sm">฿</span>
+                        <Input
+                          value={draft.price}
+                          onChange={(e) => handleDraftNewGoodChange(draft.tempId, "price", e.target.value)}
+                          placeholder="0"
+                          inputMode="decimal"
+                          className={`h-9 pl-7 text-sm font-semibold text-emerald-700 bg-emerald-50/50 ${
+                            fieldErrors?.price ? "border-red-500" : "border-emerald-100"
+                          }`}
+                        />
+                      </div>
+                    </div>
+                    {fieldErrors?.price && <p className="text-xs text-red-500 px-1">{fieldErrors.price}</p>}
+                    {rowError && <p className="text-xs text-red-500 px-1 mt-1">{rowError}</p>}
+                  </CardContent>
+                </Card>
+              )
+            })}
+
+            {/* Add Button Card */}
+            <button
+              type="button"
+              onClick={handleAddDraftNewGood}
+              className="flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50/50 aspect-[3/4] hover:border-emerald-400 hover:bg-emerald-50/30 transition-all duration-200 group"
+            >
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm group-hover:scale-110 transition-transform duration-200">
+                <Plus className="h-6 w-6 text-emerald-600" />
+              </div>
+              <span className="text-sm font-medium text-gray-600 group-hover:text-emerald-700">เพิ่มเมนูใหม่</span>
+            </button>
           </form>
-        </Card>
+        )}
       </div>
     </div>
   )
