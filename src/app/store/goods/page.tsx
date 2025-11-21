@@ -1,10 +1,20 @@
 "use client"
 
 import type React from "react"
-
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useState } from "react"
-import { Loader2, Plus, Save, Trash2, ArrowLeft, Utensils, ImageIcon, Pencil, X } from "lucide-react"
+import { 
+  Loader2, 
+  Plus, 
+  Save, 
+  Trash2, 
+  ArrowLeft, 
+  Utensils, 
+  ImageIcon, 
+  Pencil, 
+  X, 
+  UploadCloud 
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -37,6 +47,10 @@ export default function StoreGoodsPage() {
   const [goods, setGoods] = useState<GoodsResponseDto[]>([])
   const [goodDrafts, setGoodDrafts] = useState<Record<string, GoodDraft>>({})
   const [goodImageUrls, setGoodImageUrls] = useState<Record<string, string>>({})
+  
+  // State สำหรับเก็บไฟล์ที่รออัปโหลด (ยังไม่อัปโหลดจนกว่าจะกดบันทึก)
+  const [pendingUploads, setPendingUploads] = useState<Record<string, File>>({})
+
   const [loadingGoods, setLoadingGoods] = useState(true)
   const [goodsError, setGoodsError] = useState<string | null>(null)
   const [goodsMessage, setGoodsMessage] = useState<string | null>(null)
@@ -47,7 +61,7 @@ export default function StoreGoodsPage() {
   const [savingAllGoods, setSavingAllGoods] = useState(false)
   const [goodRowErrors, setGoodRowErrors] = useState<Record<string, string>>({})
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [goodUploadingMap, setGoodUploadingMap] = useState<Record<string, boolean>>({})
+  // ไม่จำเป็นต้องใช้ goodUploadingMap สำหรับการเลือกไฟล์แล้ว เพราะเราจะไปโหลดตอน Save แทน
   const [goodUploadErrors, setGoodUploadErrors] = useState<Record<string, string | null>>({})
 
   const router = useRouter()
@@ -55,7 +69,8 @@ export default function StoreGoodsPage() {
   const loadGoodImages = useCallback(async (items: GoodsResponseDto[]) => {
     const goodsWithMedia = items.filter((item) => item.goodMediaId)
     if (goodsWithMedia.length === 0) {
-      setGoodImageUrls({})
+      // อย่าเพิ่ง clear ทั้งหมด ถ้ามี pendingUploads อยู่ (เพื่อให้ preview ยังอยู่)
+      // แต่ในฟังก์ชันนี้มักเรียกตอนโหลดข้อมูลใหม่ ดังนั้น safe ที่จะ set ใหม่ตามข้อมูลเซิร์ฟเวอร์
       return
     }
 
@@ -72,14 +87,13 @@ export default function StoreGoodsPage() {
         }),
       )
 
-      setGoodImageUrls(
-        entries.reduce<Record<string, string>>((acc, entry) => {
-          if (entry.url) {
-            acc[entry.id] = entry.url
-          }
-          return acc
-        }, {}),
-      )
+      setGoodImageUrls((prev) => {
+        const next = { ...prev }
+        entries.forEach((entry) => {
+          if (entry.url) next[entry.id] = entry.url
+        })
+        return next
+      })
     } catch (error) {
       console.error("Failed to load goods media", error)
     }
@@ -103,6 +117,9 @@ export default function StoreGoodsPage() {
           return acc
         }, {}),
       )
+      // Reset pending uploads เมื่อโหลดข้อมูลใหม่
+      setPendingUploads({})
+      setGoodImageUrls({}) // Clear old urls
       await loadGoodImages(data)
       setGoodFieldErrors({})
     } catch (error) {
@@ -116,51 +133,21 @@ export default function StoreGoodsPage() {
     fetchGoods()
   }, [fetchGoods])
 
-  useEffect(() => {
-    if (!loadingGoods && goods.length === 0 && draftNewGoods.length === 0) {
-      setDraftNewGoods([createDraftNewGood()])
-    }
-  }, [draftNewGoods, goods, loadingGoods])
-
-  const handleGoodFileChange = useCallback(
-    async (goodId: string, files: File[]) => {
+  // --- Modified: Handle File Selection (Preview Only) ---
+  const handleGoodFileChange = useCallback((goodId: string, files: File[]) => {
       if (!files || files.length === 0) return
 
       const file = files[0]
+      
+      // 1. เก็บไฟล์ไว้ใน state รอการอัปโหลด
+      setPendingUploads((prev) => ({ ...prev, [goodId]: file }))
+
+      // 2. สร้าง Preview URL เพื่อแสดงผลทันที
+      const previewUrl = URL.createObjectURL(file)
+      setGoodImageUrls((prev) => ({ ...prev, [goodId]: previewUrl }))
+
+      // 3. เคลียร์ error เก่า (ถ้ามี)
       setGoodUploadErrors((prev) => ({ ...prev, [goodId]: null }))
-      setGoodUploadingMap((prev) => ({ ...prev, [goodId]: true }))
-
-      try {
-        const uploadRes = await uploadMediaViaPresign({
-          purpose: MediaPurpose.STORE_GOODS,
-          file,
-        })
-
-        if (!uploadRes?.mediaId) {
-          throw new Error("�1,�,Y�,��1O�,-�,�1^�,-�,�,>�1,�,��,��,\"�,��,�,�,�,�,��,��1^")
-        }
-
-        setGoodDrafts((prev) => ({
-          ...prev,
-          [goodId]: {
-            ...(prev[goodId] ?? { name: "", price: "", type: "Food", goodMediaId: null }),
-            goodMediaId: uploadRes.mediaId,
-          },
-        }))
-
-        setGoodImageUrls((prev) => ({
-          ...prev,
-          [goodId]: URL.createObjectURL(file),
-        }))
-      } catch (error) {
-        console.error("Failed to upload good image", error)
-        setGoodUploadErrors((prev) => ({
-          ...prev,
-          [goodId]: extractErrorMessage(error, "�1?�,?�,'�,"�,,�1%�,-�,o�,'�,\"�,z�,��,��,\"�,��,��,��,�1^�,��,؅,s�,�,T�,-�,�,?"),
-        }))
-      } finally {
-        setGoodUploadingMap((prev) => ({ ...prev, [goodId]: false }))
-      }
     },
     [],
   )
@@ -206,9 +193,17 @@ export default function StoreGoodsPage() {
 
   const handleCancelEdit = (id: string) => {
     setEditingId(null)
-    // Reset draft to original value
+    
+    // ล้างไฟล์ที่รออัปโหลดออก
+    setPendingUploads((prev) => {
+        const next = { ...prev }
+        delete next[id]
+        return next
+    })
+
     const original = goods.find((g) => g.id === id)
     if (original) {
+      // Revert ข้อมูล Draft
       setGoodDrafts((prev) => ({
         ...prev,
         [id]: {
@@ -218,9 +213,12 @@ export default function StoreGoodsPage() {
           goodMediaId: original.goodMediaId,
         },
       }))
+      // โหลดรูปเดิมกลับมาแสดง (เพราะ URL preview อาจจะทับไปแล้ว)
+      loadGoodImages([original])
     }
   }
 
+  // --- Modified: Handle Save (Upload + Update) ---
   const handleSaveGood = async (goodId: string) => {
     const draft = goodDrafts[goodId]
     if (!draft) return
@@ -255,16 +253,35 @@ export default function StoreGoodsPage() {
     setSavingGoodsMap((prev) => ({ ...prev, [goodId]: true }))
 
     try {
+      let finalMediaId = draft.goodMediaId
+
+      // ตรวจสอบว่ามีไฟล์รออัปโหลดหรือไม่
+      const pendingFile = pendingUploads[goodId]
+      if (pendingFile) {
+         try {
+            const uploadRes = await uploadMediaViaPresign({
+                purpose: MediaPurpose.STORE_GOODS,
+                file: pendingFile,
+            })
+            if (!uploadRes?.mediaId) {
+                throw new Error("อัปโหลดรูปไม่สำเร็จ (No Media ID)")
+            }
+            finalMediaId = uploadRes.mediaId
+         } catch (uploadErr) {
+             throw new Error(`อัปโหลดรูปภาพล้มเหลว: ${extractErrorMessage(uploadErr)}`)
+         }
+      }
+
       const updated = await updateGood(goodId, {
         name: trimmedName,
         price: parsedPrice,
         type: draft.type,
-        goodMediaId: draft.goodMediaId,
+        goodMediaId: finalMediaId,
       })
 
       setGoods((prev) => {
         const next = prev.map((good) => (good.id === goodId ? updated : good))
-        loadGoodImages(next)
+        loadGoodImages(next) // refresh url from server to be sure
         return next
       })
 
@@ -284,8 +301,16 @@ export default function StoreGoodsPage() {
           goodMediaId: updated.goodMediaId,
         },
       }))
+      
+      // ล้างไฟล์ที่รออัปโหลดออกเมื่อบันทึกสำเร็จ
+      setPendingUploads((prev) => {
+          const next = { ...prev }
+          delete next[goodId]
+          return next
+      })
+
     } catch (error) {
-      const msg = extractErrorMessage(error, "ไม่สามารถบันทึกสินค้านี้ได้ กรุณาลองใหม่หรือลองรีหน้า")
+      const msg = extractErrorMessage(error, "ไม่สามารถบันทึกสินค้านี้ได้")
       setGoodRowErrors((prev) => ({
         ...prev,
         [goodId]: msg,
@@ -313,6 +338,11 @@ export default function StoreGoodsPage() {
         const next = { ...prev }
         delete next[goodId]
         return next
+      })
+      setPendingUploads((prev) => {
+          const next = { ...prev }
+          delete next[goodId]
+          return next
       })
       setGoodsMessage("ลบสินค้าเรียบร้อยแล้ว")
     } catch (error) {
@@ -402,7 +432,7 @@ export default function StoreGoodsPage() {
   }
 
   const handleAddDraftNewGood = () => {
-    setDraftNewGoods((prev) => [...prev, createDraftNewGood()])
+    setDraftNewGoods((prev) => [createDraftNewGood(), ...prev])
   }
 
   const handleDraftNewGoodChange = (tempId: string, key: keyof Omit<DraftNewGood, "tempId">, value: string) => {
@@ -426,13 +456,7 @@ export default function StoreGoodsPage() {
   }
 
   const handleRemoveDraftNewGood = (tempId: string) => {
-    setDraftNewGoods((prev) => {
-      const next = prev.filter((draft) => draft.tempId !== tempId)
-      if (next.length === 0 && goods.length === 0) {
-        return [createDraftNewGood()]
-      }
-      return next
-    })
+    setDraftNewGoods((prev) => prev.filter((draft) => draft.tempId !== tempId))
     setGoodFieldErrors((prev) => {
       const next = { ...prev }
       delete next[tempId]
@@ -453,13 +477,13 @@ export default function StoreGoodsPage() {
 
         const nameChanged = draft.name.trim() !== good.name
         const priceChanged = Number(draft.price) !== Number(good.price)
-        return nameChanged || priceChanged
+        const imageChanged = !!pendingUploads[good.id] // นับว่ามีการแก้ไขถ้ามีรูป pending
+        return nameChanged || priceChanged || imageChanged
       })
 
       const validNewDrafts = draftNewGoods.filter((draft) => draft.name.trim() !== "" && draft.price.trim() !== "")
 
       const updateResults = await Promise.allSettled(dirtyExistingGoods.map((good) => handleSaveGood(good.id)))
-
       const createResults = await Promise.allSettled(validNewDrafts.map((draft) => handleCreateDraftNewGood(draft)))
 
       const allResults = [...updateResults, ...createResults]
@@ -501,23 +525,6 @@ export default function StoreGoodsPage() {
             </Button>
             <h1 className="text-2xl font-bold text-emerald-900">รายการอาหาร</h1>
           </div>
-          {/* <Button
-            onClick={(e) => handleSaveAllGoods(e as any)}
-            className="bg-emerald-600 text-white hover:bg-emerald-700 shadow-md rounded-full px-6"
-            disabled={savingAllGoods || loadingGoods}
-          >
-            {savingAllGoods ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                กำลังบันทึก...
-              </>
-            ) : (
-              <>
-                <Save className="mr-2 h-4 w-4" />
-                บันทึกการแก้ไข
-              </>
-            )}
-          </Button> */}
         </div>
 
         {goodsError && <div className="rounded-lg bg-red-50 p-4 text-red-600 border border-red-100">{goodsError}</div>}
@@ -532,7 +539,99 @@ export default function StoreGoodsPage() {
             onSubmit={handleSaveAllGoods}
             className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5"
           >
-            {/* Existing Goods */}
+            {/* 1. Add Button Card */}
+            <button
+              type="button"
+              onClick={handleAddDraftNewGood}
+              className="flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50/50 aspect-[3/4] hover:border-emerald-400 hover:bg-emerald-50/30 transition-all duration-200 group"
+            >
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm group-hover:scale-110 transition-transform duration-200">
+                <Plus className="h-6 w-6 text-emerald-600" />
+              </div>
+              <span className="text-sm font-medium text-gray-600 group-hover:text-emerald-700">เพิ่มเมนูใหม่</span>
+            </button>
+
+            {/* 2. New Drafts */}
+            {draftNewGoods.map((draft) => {
+              const fieldErrors = goodFieldErrors[draft.tempId]
+              const rowError = goodRowErrors[draft.tempId]
+
+              return (
+                <Card
+                  key={draft.tempId}
+                  className="group relative overflow-hidden border-0 bg-white shadow-lg ring-2 ring-emerald-500/20 rounded-xl flex flex-col"
+                >
+                  <div className="relative aspect-[4/3] w-full bg-emerald-50 flex items-center justify-center overflow-hidden">
+                    <ImageIcon className="h-10 w-10 text-emerald-200" />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute top-2 right-2 h-8 w-8 rounded-full text-gray-400 hover:text-red-500 hover:bg-white/80"
+                      onClick={() => handleRemoveDraftNewGood(draft.tempId)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  <CardContent className="p-4 space-y-3 flex-1 flex flex-col">
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-emerald-600">ชื่อเมนูใหม่</label>
+                      <Input
+                        value={draft.name}
+                        onChange={(e) => handleDraftNewGoodChange(draft.tempId, "name", e.target.value)}
+                        placeholder="ชื่อเมนูใหม่"
+                        className={`h-9 text-sm bg-emerald-50/50 ${
+                          fieldErrors?.name ? "border-red-500" : "border-emerald-100"
+                        }`}
+                        autoFocus
+                      />
+                      {fieldErrors?.name && <p className="text-xs text-red-500 px-1">{fieldErrors.name}</p>}
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-emerald-600">ราคา</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600/70 text-sm">฿</span>
+                        <Input
+                          value={draft.price}
+                          onChange={(e) => handleDraftNewGoodChange(draft.tempId, "price", e.target.value)}
+                          placeholder="0"
+                          inputMode="decimal"
+                          className={`h-9 pl-7 text-sm font-semibold text-emerald-700 bg-emerald-50/50 ${
+                            fieldErrors?.price ? "border-red-500" : "border-emerald-100"
+                          }`}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex gap-1 pt-1 mt-auto">
+                      <Button
+                        onClick={(e) => handleSaveAllGoods(e as any)}
+                        className="bg-emerald-600 text-white hover:bg-emerald-700 shadow-md rounded-full px-6 w-full"
+                        disabled={savingAllGoods || loadingGoods}
+                      >
+                        {savingAllGoods ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            กำลังบันทึก
+                          </>
+                        ) : (
+                          <>
+                            <Save className="mr-2 h-4 w-4" />
+                            บันทึก
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                    {fieldErrors?.price && <p className="text-xs text-red-500 px-1">{fieldErrors.price}</p>}
+                    {rowError && <p className="text-xs text-red-500 px-1 mt-1">{rowError}</p>}
+                  </CardContent>
+                </Card>
+              )
+            })}
+
+            {/* 3. Existing Goods */}
             {goods.map((good) => {
               const draft = goodDrafts[good.id] ?? {
                 name: "",
@@ -546,8 +645,7 @@ export default function StoreGoodsPage() {
               const saving = savingGoodsMap[good.id]
               const isEditing = editingId === good.id
               const imageUrl = goodImageUrls[good.id]
-              const uploading = goodUploadingMap[good.id]
-
+              
               return (
                 <Card
                   key={good.id}
@@ -555,25 +653,37 @@ export default function StoreGoodsPage() {
                     isEditing ? "ring-2 ring-emerald-500 shadow-lg z-10" : "shadow-md hover:shadow-xl"
                   }`}
                 >
+                  {/* Image Area */}
                   <div className="relative aspect-[4/3] w-full bg-gray-100 flex items-center justify-center overflow-hidden">
-                    {imageUrl && (
-                      <img
-                        src={imageUrl}
-                        alt={draft.name || "Good image"}
-                        className="absolute inset-0 h-full w-full object-cover"
-                      />
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/5 to-transparent" />
-                    {!imageUrl && <Utensils className="h-12 w-12 text-gray-300" />}
-                    {isEditing && (
-                      <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center p-2">
-                        <GoogleFileUpload
-                          maxFiles={1}
-                          accept="image/png,image/jpeg,image/jpg,image/webp"
-                          onFilesChange={(files) => handleGoodFileChange(good.id, files)}
-                          disabled={uploading}
-                          className="w-full max-h-full overflow-auto bg-transparent"
+                    {/* Background Image */}
+                    {imageUrl ? (
+                        <img
+                            src={imageUrl}
+                            alt={draft.name || "Good image"}
+                            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${isEditing ? 'opacity-40' : 'opacity-100'}`}
                         />
+                    ) : (
+                        !isEditing && <Utensils className="h-12 w-12 text-gray-300" />
+                    )}
+                    
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/5 to-transparent pointer-events-none" />
+
+                    {/* Upload Overlay Button (Visible only in Edit Mode) */}
+                    {isEditing && (
+                      <div className="absolute inset-0 flex items-center justify-center z-20">
+                         <div className="relative overflow-hidden rounded-full bg-emerald-600 px-4 py-2 text-xs text-white shadow-lg hover:bg-emerald-700 transition-all cursor-pointer hover:scale-105 ring-2 ring-white">
+                            <span className="flex items-center gap-2 font-medium">
+                                <UploadCloud className="h-3 w-3"/>
+                                เปลี่ยนรูป
+                            </span>
+                            <GoogleFileUpload
+                                maxFiles={1}
+                                accept="image/png,image/jpeg,image/jpg,image/webp"
+                                onFilesChange={(files) => handleGoodFileChange(good.id, files)}
+                                disabled={saving} // ปิดการเลือกไฟล์ขณะกำลังบันทึก
+                                className="absolute inset-0 cursor-pointer opacity-0 w-full h-full"
+                            />
+                         </div>
                       </div>
                     )}
 
@@ -673,100 +783,6 @@ export default function StoreGoodsPage() {
                 </Card>
               )
             })}
-
-            {/* New Drafts */}
-            {draftNewGoods.map((draft) => {
-              const fieldErrors = goodFieldErrors[draft.tempId]
-              const rowError = goodRowErrors[draft.tempId]
-
-              return (
-                <Card
-                  key={draft.tempId}
-                  className="group relative overflow-hidden border-0 bg-white shadow-lg ring-2 ring-emerald-500/20 rounded-xl flex flex-col"
-                >
-                  <div className="relative aspect-[4/3] w-full bg-emerald-50 flex items-center justify-center overflow-hidden">
-                    <ImageIcon className="h-10 w-10 text-emerald-200" />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute top-2 right-2 h-8 w-8 rounded-full text-gray-400 hover:text-red-500 hover:bg-white/80"
-                      onClick={() => handleRemoveDraftNewGood(draft.tempId)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-
-                  <CardContent className="p-4 space-y-3 flex-1 flex flex-col">
-                    <div className="space-y-1">
-                      <label className="text-xs font-medium text-emerald-600">ชื่อเมนูใหม่</label>
-                      <Input
-                        value={draft.name}
-                        onChange={(e) => handleDraftNewGoodChange(draft.tempId, "name", e.target.value)}
-                        placeholder="ชื่อเมนูใหม่"
-                        className={`h-9 text-sm bg-emerald-50/50 ${
-                          fieldErrors?.name ? "border-red-500" : "border-emerald-100"
-                        }`}
-                        autoFocus
-                      />
-                      {fieldErrors?.name && <p className="text-xs text-red-500 px-1">{fieldErrors.name}</p>}
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-xs font-medium text-emerald-600">ราคา</label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600/70 text-sm">฿</span>
-                        <Input
-                          value={draft.price}
-                          onChange={(e) => handleDraftNewGoodChange(draft.tempId, "price", e.target.value)}
-                          placeholder="0"
-                          inputMode="decimal"
-                          className={`h-9 pl-7 text-sm font-semibold text-emerald-700 bg-emerald-50/50 ${
-                            fieldErrors?.price ? "border-red-500" : "border-emerald-100"
-                          }`}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex gap-1 pt-1 mt-auto">
-                        <Button
-                            onClick={(e) => handleSaveAllGoods(e as any)}
-                            className="bg-emerald-600 text-white hover:bg-emerald-700 shadow-md rounded-full px-6"
-                            disabled={savingAllGoods || loadingGoods}
-                        >
-                            {savingAllGoods ? (
-                            <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                กำลังบันทึก...
-                            </>
-                            ) : (
-                            <>
-                                <Save className="mr-2 h-4 w-4" />
-                                บันทึกการแก้ไข
-                            </>
-                            )}
-                        </Button>
-                    </div>
-                    {fieldErrors?.price && <p className="text-xs text-red-500 px-1">{fieldErrors.price}</p>}
-                    {rowError && <p className="text-xs text-red-500 px-1 mt-1">{rowError}</p>}
-                  </CardContent>
-                
-
-                </Card>
-              )
-            })}
-
-            {/* Add Button Card */}
-            <button
-              type="button"
-              onClick={handleAddDraftNewGood}
-              className="flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50/50 aspect-[3/4] hover:border-emerald-400 hover:bg-emerald-50/30 transition-all duration-200 group"
-            >
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm group-hover:scale-110 transition-transform duration-200">
-                <Plus className="h-6 w-6 text-emerald-600" />
-              </div>
-              <span className="text-sm font-medium text-gray-600 group-hover:text-emerald-700">เพิ่มเมนูใหม่</span>
-            </button>
           </form>
         )}
       </div>
