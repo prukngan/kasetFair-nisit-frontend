@@ -17,8 +17,10 @@ import {
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { uploadMedia } from "@/services/mediaService"
+import { uploadMedia, uploadMediaViaPresign } from "@/services/mediaService"
 import { MediaPurpose } from "@/services/dto/media.dto"
+import { GoogleFileUpload } from "@/components/uploadFile"
+import { getMediaUrl } from "@/services/mediaService"
 import {
   createClubInfo,
   getClubInfo,
@@ -30,7 +32,6 @@ import {
   ArrowRight,
   Loader2,
   RefreshCw,
-  UploadCloud,
 } from "lucide-react"
 import { ClubInfoResponseDto } from "@/services/dto/club-info.dto"
 
@@ -49,8 +50,12 @@ export type ClubInfoFormErrors = Partial<
   Record<keyof ClubInfoFormValues | "clubApplicationFile", string>
 >
 
-export type ClubInfoFormSubmitPayload = ClubInfoFormValues & {
-  applicationFile: File | null
+type InitialUploadedFile = {
+  id: string
+  name: string
+  url: string
+  size?: number
+  type?: string
 }
 
 const emptyValues: ClubInfoFormValues = {
@@ -113,7 +118,8 @@ export default function ClubInfoPage() {
 
   // state ฟอร์มจริง ๆ
   const [values, setValues] = useState<ClubInfoFormValues>(emptyValues)
-  const [applicationFile, setApplicationFile] = useState<File | null>(null)
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([])
+  const [initialUploadedFiles, setInitialUploadedFiles] = useState<InitialUploadedFile[]>([])
 
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -133,9 +139,32 @@ export default function ClubInfoPage() {
         const filled = buildFormValues(clubInfo)
         setSavedValues(filled)
         setValues(filled)
+
+        if (clubInfo.clubApplicationMediaId) {
+          try {
+            const media = await getMediaUrl(clubInfo.clubApplicationMediaId)
+            setInitialUploadedFiles([
+              {
+                id: clubInfo.clubApplicationMediaId,
+                name: media.originalName ?? "club_application",
+                url: media.link ?? "",
+                size: media.size,
+                type: media.mimeType,
+              },
+            ])
+          } catch (err) {
+            console.error("Failed to fetch club application file", err)
+          }
+        } else {
+          setInitialUploadedFiles([])
+        }
+
+        setUploadedFiles([])
       } else {
         setSavedValues(null)
         setValues(emptyValues)
+        setInitialUploadedFiles([])
+        setUploadedFiles([])
       }
     } catch (error) {
       console.error("Failed to load club information", error)
@@ -146,7 +175,6 @@ export default function ClubInfoPage() {
       )
     } finally {
       setLoading(false)
-      setApplicationFile(null)
     }
   }, [])
 
@@ -170,6 +198,22 @@ export default function ClubInfoPage() {
     }))
   }
 
+  const handleFilesChange = (files: File[]) => {
+    setUploadedFiles(files)
+    if (files[0]) {
+      setValues((prev) => ({
+        ...prev,
+        applicationFileName: files[0]?.name ?? prev.applicationFileName,
+      }))
+    }
+    setFieldErrors((prev) => {
+      if (!prev) return prev
+      const next = { ...prev }
+      delete next.clubApplicationMediaId
+      return next
+    })
+  }
+
   const resolveError = (key: keyof ClubInfoFormValues | "clubApplicationFile") =>
     fieldErrors?.[key] ?? null
 
@@ -184,33 +228,30 @@ export default function ClubInfoPage() {
       setFieldErrors(undefined)
       setSuccessMessage(null)
 
-      const payload: ClubInfoFormSubmitPayload = {
-        ...values,
-        applicationFile,
-      }
+      const applicationFile = uploadedFiles[0] ?? null
 
       try {
         const trimmed = {
-          clubName: payload.clubName.trim(),
-          leaderFirstName: payload.leaderFirstName.trim(),
-          leaderLastName: payload.leaderLastName.trim(),
-          leaderNisitId: payload.leaderNisitId.trim(),
-          leaderEmail: payload.leaderEmail.trim(),
-          leaderPhone: payload.leaderPhone.trim(),
+          clubName: values.clubName.trim(),
+          leaderFirstName: values.leaderFirstName.trim(),
+          leaderLastName: values.leaderLastName.trim(),
+          leaderNisitId: values.leaderNisitId.trim(),
+          leaderEmail: values.leaderEmail.trim(),
+          leaderPhone: values.leaderPhone.trim(),
         }
 
         const applicationFileName =
-          payload.applicationFile?.name ??
-          payload.applicationFileName ??
+          applicationFile?.name ??
+          values.applicationFileName ??
           null
 
-        let clubApplicationMediaId = payload.clubApplicationMediaId ?? null
-        if (payload.applicationFile) {
-          const media = await uploadMedia({
+        let clubApplicationMediaId = values.clubApplicationMediaId ?? null
+        if (applicationFile) {
+          const media = await uploadMediaViaPresign({
             purpose: MediaPurpose.CLUB_APPLICATION,
-            file: payload.applicationFile,
+            file: applicationFile,
           })
-          clubApplicationMediaId = media.id
+          clubApplicationMediaId = media.mediaId
         }
 
         if (savedValues) {
@@ -235,7 +276,25 @@ export default function ClubInfoPage() {
 
           setSavedValues(newValues)
           setValues(newValues)
-          setApplicationFile(null)
+          try {
+            if (clubApplicationMediaId) {
+              const media = await getMediaUrl(clubApplicationMediaId)
+              setInitialUploadedFiles([
+                {
+                  id: clubApplicationMediaId,
+                  name: media.originalName ?? applicationFileName ?? "club_application",
+                  url: media.link ?? "",
+                  size: media.size,
+                  type: media.mimeType,
+                },
+              ])
+            } else {
+              setInitialUploadedFiles([])
+            }
+          } catch (err) {
+            console.error("Failed to refresh application file", err)
+          }
+          setUploadedFiles([])
 
           // ✅ ถ้า response ที่กลับมาครบแล้ว → ไปหน้า /store/create
           if (isClubInfoComplete(newValues)) {
@@ -261,7 +320,25 @@ export default function ClubInfoPage() {
 
           setSavedValues(newValues)
           setValues(newValues)
-          setApplicationFile(null)
+          try {
+            if (clubApplicationMediaId) {
+              const media = await getMediaUrl(clubApplicationMediaId)
+              setInitialUploadedFiles([
+                {
+                  id: clubApplicationMediaId,
+                  name: media.originalName ?? applicationFileName ?? "club_application",
+                  url: media.link ?? "",
+                  size: media.size,
+                  type: media.mimeType,
+                },
+              ])
+            } else {
+              setInitialUploadedFiles([])
+            }
+          } catch (err) {
+            console.error("Failed to refresh application file", err)
+          }
+          setUploadedFiles([])
 
           // ✅ ถ้า response ที่กลับมาครบแล้ว → ไปหน้า /store/create
           if (isClubInfoComplete(newValues)) {
@@ -285,7 +362,7 @@ export default function ClubInfoPage() {
         setSubmitting(false)
       }
     },
-    [applicationFile, isSubmitDisabled, savedValues, values, router]
+    [uploadedFiles, isSubmitDisabled, savedValues, values, router]
   )
 
   const handleCancel = useCallback(() => {
@@ -475,30 +552,13 @@ export default function ClubInfoPage() {
 
                   <div className="space-y-2">
                     <Label>ไฟล์คำขอรับรององค์กร (PDF / PNG / JPG)</Label>
-                    <label
-                      className="flex w-full cursor-pointer items-center justify-between rounded-lg border border-dashed border-emerald-200 bg-emerald-50/70 px-4 py-3 text-sm text-emerald-800 hover:bg-emerald-100"
-                    >
-                      <span className="truncate">
-                        {applicationFile?.name ??
-                          values.applicationFileName ??
-                          "เลือกไฟล์ ไม่เกิน 10 MB"}
-                      </span>
-                      <UploadCloud className="h-4 w-4" />
-                      <input
-                        type="file"
-                        accept=".pdf,.png,.jpg,.jpeg"
-                        className="hidden"
-                        onChange={(event) => {
-                          const file = event.target.files?.[0] ?? null
-                          setApplicationFile(file)
-                          if (!file) return
-                          setValues((prev) => ({
-                            ...prev,
-                            applicationFileName: file.name,
-                          }))
-                        }}
-                      />
-                    </label>
+                    <GoogleFileUpload
+                      maxFiles={1}
+                      accept="application/pdf,image/png,image/jpeg,image/jpg"
+                      maxSize={10 * 1024 * 1024}
+                      onFilesChange={handleFilesChange}
+                      initialFiles={initialUploadedFiles}
+                    />
                     <p className="text-xs text-emerald-600">
                       ใช้ไฟล์ที่ลงนามเรียบร้อยแล้ว เพื่อให้ทีมตรวจสอบได้โดยรวดเร็ว
                     </p>

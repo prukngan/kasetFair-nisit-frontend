@@ -9,6 +9,7 @@ import { StepOneForm } from "@/components/createStep/step-one-form"
 import { StepTwoForm } from "@/components/createStep/step-two-form"
 import { StepThreeForm } from "@/components/createStep/step-three-form"
 import { StepSuccess } from "@/components/createStep/step-success"
+import { ArrowLeft } from "lucide-react"
 import {
   useStoreWizardCore,
   useCreateStoreStep,
@@ -187,46 +188,55 @@ export default function StoreCreatePage() {
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-emerald-100 px-4 py-12">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
         {currentStep !== commitStepIndex && (
-          <Card className="border-emerald-100 shadow-md bg-white/90">
-            <CardHeader>
-              <CardTitle className="text-emerald-800 text-2xl font-bold">
-                ลงทะเบียนร้านสำหรับงาน Kaset Fair
-              </CardTitle>
-              <CardDescription className="text-emerald-700">
-                กรุณากรอกขั้นตอนด้านล่างให้ครบ คุณสามารถกลับมาแก้ไขภายหลังได้
-              </CardDescription>
+          <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600" />
 
-              {/* {storeStatus?.storeAdminNisitId && (
-                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-emerald-700">
-                  <Badge variant="outline">Store Admin</Badge>
-                  <span>{storeStatus.storeAdminNisitId}</span>
-                  {isStoreAdmin && <Badge variant="secondary">You</Badge>}
+            <CardHeader className="space-y-1 pb-0">
+              <div className="flex items-start gap-4">
+                <button
+                  onClick={() => router.back()}
+                  className="mt-1 flex h-10 w-10 items-center justify-center rounded-full bg-emerald-50 text-emerald-700 transition-colors hover:bg-emerald-100 hover:text-emerald-900"
+                  aria-label="กลับ"
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </button>
+
+                <div className="flex-1 space-y-2">
+                  <CardTitle className="text-3xl font-bold tracking-tight text-emerald-900">
+                    ลงทะเบียนร้านสำหรับงาน Kaset Fair
+                  </CardTitle>
+                  <CardDescription className="text-base text-emerald-700/80">
+                    กรุณากรอกขั้นตอนด้านล่างให้ครบ คุณสามารถกลับมาแก้ไขภายหลังได้
+                  </CardDescription>
                 </div>
-              )} */}
-              {!canEditStore && (
-                  <p className="mt-2 text-xs text-amber-700">
-                    คุณสามารถดูข้อมูลนี้ได้ แต่มีเพียงผู้ดูแลร้านเท่านั้นที่สามารถแก้ไขได้
-                  </p>
+              </div>
+
+              {storeStatus?.storeAdminNisitId && (
+                <div className="flex flex-wrap items-center gap-2 rounded-lg bg-emerald-50/50 px-4 py-3 border border-emerald-100">
+                  <Badge variant="outline" className="border-emerald-300 bg-white text-emerald-700 font-medium">
+                    Store Admin
+                  </Badge>
+                  <span className="text-sm font-medium text-emerald-800">{storeStatus.storeAdminNisitId}</span>
+                  {isStoreAdmin && (
+                    <Badge variant="secondary" className="bg-emerald-600 text-white hover:bg-emerald-700">
+                      You
+                    </Badge>
+                  )}
+                </div>
               )}
 
-              {/* {storeStatus && (
-                <p className="mt-2 text-xs uppercase tracking-wide text-emerald-600">
-                  สถานะปัจจุบัน: {storeStatus.state}
-                </p>
-              )} */}
-
               {stepError && (
-                <p className="mt-2 text-xs text-red-600">
-                  {stepError}
-                </p>
+                <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3">
+                  <p className="text-sm font-medium text-red-700">{stepError}</p>
+                </div>
               )}
             </CardHeader>
 
-            <CardContent>
-              <StepIndicator steps={steps} />
-            </CardContent>
           </Card>
         )}
+            <StepIndicator steps={steps} />
+            {/* <CardContent className="pt-0"> */}
+            {/* </CardContent> */}
 
         {currentStep === 1 && (
           <StepOneForm
