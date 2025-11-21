@@ -37,6 +37,9 @@ import {
 } from "@/services/storeServices"
 import { getNisitInfo } from "@/services/nisitService"
 import { isStoreAdmin as isStoreAdminUtil } from "@/utils/storeAdmin"
+import { GoogleFileUpload } from "@/components/uploadFile"
+import { getMediaUrl, uploadMediaViaPresign } from "@/services/mediaService"
+import { MediaPurpose } from "@/services/dto/media.dto"
 
 type GoodDraft = {
   name: string
@@ -48,6 +51,14 @@ type DraftNewGood = {
   tempId: string
   name: string
   price: string
+}
+
+type InitialUploadedFile = {
+  id: string
+  name: string
+  url: string
+  size?: number
+  type?: string
 }
 
 // const GOODS_TYPE_OPTIONS: { label: string; value: GoodsType }[] = [
@@ -88,6 +99,12 @@ export default function StorePage() {
   const [goodRowErrors, setGoodRowErrors] = useState<Record<string, string>>({})
   const totalProductRows = goods.length + draftNewGoods.length
   const [currentUserNisitId, setCurrentUserNisitId] = useState<string | null>(null)
+  const [storeFiles, setStoreFiles] = useState<File[]>([])
+  const [savingStoreFiles, setSavingStoreFiles] = useState(false)
+  const [storeFileError, setStoreFileError] = useState<string | null>(null)
+  const [storeFileMessage, setStoreFileMessage] = useState<string | null>(null)
+
+  const [initialLayoutUploadedFiles, setInitialLayoutUploadedFiles] = useState<InitialUploadedFile[]>([])
 
   const router = useRouter()
 
@@ -127,6 +144,18 @@ export default function StorePage() {
       const data = await getStoreStatus()
       setStore(data)
       resetStoreForm(data)
+      if (data.boothLayoutMediaId) {
+        const mediaRes = await getMediaUrl(data.boothLayoutMediaId)
+        setInitialLayoutUploadedFiles([
+          {
+            id: mediaRes.id,
+            name: mediaRes.originalName ?? "layout_name", // Placeholder name
+            url: mediaRes.link ?? "",
+            size: mediaRes.size,
+            type: mediaRes.mimeType,
+          },
+        ])
+      }
     } catch (error) {
       const status =
         (error as { response?: { status?: number } })?.response?.status ?? null
@@ -586,6 +615,43 @@ export default function StorePage() {
     fetchGoods()
   }
 
+  const handleSaveStoreFiles = async () => {
+    if (!store) {
+      setStoreFileError("ไม่พบข้อมูลร้านค้า")
+      return
+    }
+
+    if (storeFiles.length === 0) {
+      setStoreFileError("กรุณาอัปโหลดไฟล์ก่อนบันทึก")
+      return
+    }
+
+    setSavingStoreFiles(true)
+    setStoreFileError(null)
+    setStoreFileMessage(null)
+
+    try {
+      const uploadRes = await uploadMediaViaPresign({
+        purpose: MediaPurpose.STORE_LAYOUT,
+        file: storeFiles[0],
+      })
+
+      if (!uploadRes?.mediaId) {
+        throw new Error("อัปโหลดไฟล์ไม่สำเร็จ")
+      }
+
+      await updateStore({
+        boothMediaId: uploadRes.mediaId,
+      })
+
+      setStoreFileMessage("บันทึกการเปลี่ยนแปลงแล้ว")
+    } catch (error) {
+      setStoreFileError(extractErrorMessage(error, "บันทึกการเปลี่ยนแปลงไม่สำเร็จ"))
+    } finally {
+      setSavingStoreFiles(false)
+    }
+  }
+
   const renderLoading = (label: string) => (
     <div className="flex items-center gap-2 text-sm text-emerald-700">
       <Loader2 className="h-4 w-4 animate-spin" />
@@ -617,6 +683,13 @@ export default function StorePage() {
                 <p className="mt-1 text-sm text-emerald-700">
                     ดูสถานะร้าน ปรับปรุงสมาชิก และอัปเดตรายการสินค้าได้จากหน้าเดียว
                 </p>
+                {store?.storeAdminNisitId && (
+                <div className="text-sm text-emerald-700 flex items-center gap-2">
+                    <Badge variant="outline">Store Admin</Badge>
+                    <span>{store.storeAdminNisitId}</span>
+                    {isStoreAdmin && <Badge variant="secondary">You</Badge>}
+                </div>
+                )}
             </div>
         </div>
         </header>
@@ -628,16 +701,6 @@ export default function StorePage() {
             <CardDescription className="text-sm">
                 ตรวจสอบและแก้ไขข้อมูลพื้นฐานของร้าน รวมถึงอีเมลสมาชิก
             </CardDescription>
-            {/* {store?.storeAdminNisitId && (
-            <div className="text-sm text-emerald-700 flex items-center gap-2">
-                <Badge variant="outline">Store Admin</Badge>
-                <span>{store.storeAdminNisitId}</span>
-                {isStoreAdmin && <Badge variant="secondary">You</Badge>}
-            </div>
-            )}
-            {!canEditStore && (
-            <p className="text-sm text-amber-700">You can view this data but only the store admin can edit.</p>
-            )} */}
 
             </div>
 
@@ -804,6 +867,55 @@ export default function StorePage() {
             </Button>
             </CardFooter>
         </form>
+        </Card>
+
+        <Card className="border-emerald-100 bg-white/90 shadow-md">
+          <CardHeader>
+            <CardTitle className="text-emerald-800">อัปโหลดรูป/ไฟล์ร้านค้า</CardTitle>
+            <CardDescription className="text-sm">
+              เพิ่มรูปโปรโมต เมนู หรือเอกสารที่เกี่ยวข้องกับร้านค้า (สูงสุด 5MB ต่อไฟล์)
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <GoogleFileUpload
+              maxFiles={1}
+              accept="image/png,image/jpeg,image/jpg,image/webp,application/pdf"
+              maxSize={5 * 1024 * 1024}
+              onFilesChange={setStoreFiles}
+              className="max-w-xl"
+              disabled={!canEditStore}
+              initialFiles={initialLayoutUploadedFiles}
+            />
+            {/* {storeFiles.length > 0 && (
+              <p className="mt-2 text-sm text-emerald-700">เลือกแล้ว {storeFiles[0].name}</p>
+            )} */}
+            {storeFileError && (
+              <p className="mt-2 text-sm text-red-600">{storeFileError}</p>
+            )}
+            {storeFileMessage && (
+              <p className="mt-2 text-sm text-emerald-700">{storeFileMessage}</p>
+            )}
+            <div className="mt-4 flex justify-end">
+              <Button
+                type="button"
+                className="bg-emerald-600 text-white hover:bg-emerald-700"
+                onClick={handleSaveStoreFiles}
+                disabled={!canEditStore || savingStoreFiles}
+              >
+                {savingStoreFiles ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="ml-2">กำลังบันทึก...</span>
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4" />
+                    บันทึกการเปลี่ยนแปลง
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardContent>
         </Card>
 
 
