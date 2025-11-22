@@ -115,7 +115,7 @@ export default async function proxy(req: NextRequest) {
     return res
   }
 
-  console.log(payload)
+  // console.log(payload)
 
   // ถ้า profile ยังไม่ complete
   const requiredFields = ["firstName", "lastName", "email", "nisitId", "phone"];

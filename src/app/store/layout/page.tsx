@@ -112,8 +112,9 @@ export default function StoreLayoutPage() {
       }
 
       if (Object.keys(updatePayload).length > 0) {
-        await updateStore(updatePayload)
+        const data = await updateStore(updatePayload)
         setStoreFileMessage("บันทึกการเปลี่ยนแปลงแล้ว")
+        // setStore(data)
         await fetchStore() // Reload to get updated data
       } else {
         setStoreFileMessage("ไม่มีการเปลี่ยนแปลง")

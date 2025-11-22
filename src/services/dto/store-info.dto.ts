@@ -75,3 +75,28 @@ export type StoreResponseDto = {
   createdAt: Date;
   updatedAt: Date;
 }
+
+export type StoreValidateResponseDto = {
+  store: {
+    id: number;
+    storeName: string;
+    type: StoreType;
+    state: StoreState;
+    boothNumber: string;
+    storeAdminNisitId: string | null;
+  };
+
+  isValid: boolean;
+
+  sections: {
+    key: 'members' | 'clubInfo' | 'storeDetail' | 'goods';
+    label: string;
+    ok: boolean;
+    items: {
+      key: string;
+      label: string;
+      ok: boolean;
+      message?: string;
+    }[];
+  }[];
+};

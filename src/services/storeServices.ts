@@ -109,3 +109,8 @@ export async function deleteGood(goodId: string): Promise<void> {
     throw new Error(message)
   }
 }
+
+export async function getStoreValidate() {
+  const res = await http.get(`${STORE_SERVICE_API}/mine/validation`)
+  return res.data
+}
