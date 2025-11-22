@@ -14,6 +14,7 @@ import { MediaPurpose } from "@/services/dto/media.dto"
 import { getStoreStatus, updateStore, extractErrorMessage } from "@/services/storeServices"
 import { getNisitInfo } from "@/services/nisitService"
 import { isStoreAdmin as isStoreAdminUtil } from "@/utils/storeAdmin"
+import { StoreQuestionsForm } from "@/components/store/StoreQuestionsForm"
 import type { StoreResponseDto, GoodsType } from "@/services/dto/store-info.dto"
 import { Label } from "@/components/ui/label"
 
@@ -257,6 +258,8 @@ export default function StoreLayoutPage() {
             </div>
           </CardContent>
         </Card>
+
+        <StoreQuestionsForm canEdit={canEditStore} />
       </div>
     </div>
   )
