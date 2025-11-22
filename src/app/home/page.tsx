@@ -66,7 +66,7 @@ export const convertStateToLabel = (
     case "ProductDetails":
       return "รายละเอียดสินค้า"
     case "Pending":
-      return "รอจับฉลาก"
+      return "รอการพิจารณา"
     default:
       return "ไม่ระบุ"
   }

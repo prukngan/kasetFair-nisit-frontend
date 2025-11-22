@@ -2,11 +2,12 @@
 
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
-import { Store, ShoppingBag, FileImage, ArrowRight, Loader2 } from "lucide-react"
+import { Store, ShoppingBag, FileImage, ArrowLeft, ArrowRight, Loader2 } from "lucide-react"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { getStoreStatus } from "@/services/storeServices"
 import type { StoreResponseDto } from "@/services/dto/store-info.dto"
+import { Button } from "@/components/ui/button"
 
 export default function StoreDashboardPage() {
   const router = useRouter()
@@ -66,9 +67,25 @@ export default function StoreDashboardPage() {
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-emerald-100 px-4 py-10">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
         <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-emerald-900">จัดการร้านค้า</h1>
-            <p className="mt-2 text-emerald-700">ยินดีต้อนรับสู่ระบบจัดการร้านค้าของคุณ</p>
+
+          <div className="flex items-start gap-4 mb-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="rounded-full hover:bg-white/60 bg-white/40 shadow-sm backdrop-blur-sm"
+              onClick={() => router.push("/home")}
+            >
+              <ArrowLeft className="h-6 w-6 text-emerald-900" />
+            </Button>
+
+            <div>
+              <h1 className="text-3xl font-bold text-emerald-900 leading-tight">
+                จัดการร้านค้า
+              </h1>
+              <p className="mt-1 text-emerald-700 text-[15px]">
+                ยินดีต้อนรับสู่ระบบจัดการร้านค้าของคุณ
+              </p>
+            </div>
           </div>
           {store && (
             <div className="flex items-center gap-3 rounded-xl bg-white/80 px-4 py-3 shadow-sm backdrop-blur">
