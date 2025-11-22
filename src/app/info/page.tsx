@@ -8,10 +8,11 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { toast } from "@/lib/toast"
 import { getNisitInfo, updateNisitInfo } from "@/services/nisitService"
 import type { NisitInfo } from "@/services/dto/nisit-info.dto"
 import { GoogleFileUpload } from "@/components/uploadFile"
-import { getMediaUrl, uploadMedia, uploadMediaViaPresign } from "@/services/mediaService"
+import { getMediaUrl, uploadMediaViaPresign } from "@/services/mediaService"
 import { MediaPurpose } from "@/services/dto/media.dto"
 
 type FormState = {
@@ -32,6 +33,7 @@ type InitialUploadedFile = {
 
 export default function EditNisitPage() {
   const router = useRouter()
+    
   const [formData, setFormData] = useState<FormState>({
     firstName: "",
     lastName: "",
@@ -42,8 +44,9 @@ export default function EditNisitPage() {
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState(false)
+  // ลบ error/success state แบบเก่าออก เพื่อใช้ toast แทน หรือเก็บ error ไว้เฉพาะตอนโหลดหน้าแรกไม่ผ่าน
+  const [fetchError, setFetchError] = useState<string | null>(null)
+  
   const [initialCardUploadedFiles, setInitialCardUploadedFiles] = useState<InitialUploadedFile[]>([])
 
   const hasFetched = useRef(false)
@@ -53,11 +56,17 @@ export default function EditNisitPage() {
     hasFetched.current = true
     const bootstrap = async () => {
       setLoading(true)
-      setError(null)
+      setFetchError(null)
       try {
         const result = (await getNisitInfo()) as NisitInfo | undefined
         if (!result) {
-          setError("ไม่สามารถโหลดข้อมูลนิสิตได้ กรุณาลองใหม่อีกครั้ง")
+          setFetchError("ไม่สามารถโหลดข้อมูลนิสิตได้ กรุณาลองใหม่อีกครั้ง")
+          // Toast แจ้งเตือนเมื่อโหลดข้อมูลไม่สำเร็จ
+          toast({
+            variant: "destructive",
+            title: "ผิดพลาด",
+            description: "ไม่สามารถโหลดข้อมูลนิสิตได้",
+          })
           return
         }
         setFormData({
@@ -68,13 +77,11 @@ export default function EditNisitPage() {
           nisitCardMediaId: result.nisitCardMediaId ?? "",
         })
         if (result.nisitCardMediaId) {
-
           const mediaRes = await getMediaUrl(result.nisitCardMediaId)
-
           setInitialCardUploadedFiles([
             {
               id: result.nisitCardMediaId,
-              name: mediaRes.originalName ?? "card_name", // Placeholder name
+              name: mediaRes.originalName ?? "card_name", 
               url: mediaRes.link ?? "",
               size: mediaRes.size,
               type: mediaRes.mimeType,
@@ -84,13 +91,18 @@ export default function EditNisitPage() {
 
       } catch (err) {
         console.error(err)
-        setError("เกิดข้อผิดพลาดระหว่างโหลดข้อมูล กรุณาลองใหม่")
+        setFetchError("เกิดข้อผิดพลาดระหว่างโหลดข้อมูล กรุณาลองใหม่")
+        toast({
+            variant: "destructive",
+            title: "ผิดพลาด",
+            description: "เกิดข้อผิดพลาดระหว่างโหลดข้อมูล",
+        })
       } finally {
         setLoading(false)
       }
     }
     void bootstrap()
-  }, [])
+  }, [toast]) // เพิ่ม dependency
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.target
@@ -110,15 +122,18 @@ export default function EditNisitPage() {
     event.preventDefault()
     if (saving) return
 
+    // Validation Check
     const phoneOk = /^0[0-9]{9}$/.test(formData.phone)
     if (!phoneOk) {
-      setError("กรุณากรอกเบอร์โทรให้ถูกต้อง (10 หลักขึ้นต้นด้วย 0)")
+      toast({
+        variant: "destructive",
+        title: "ข้อมูลไม่ถูกต้อง",
+        description: "กรุณากรอกเบอร์โทรให้ถูกต้อง (10 หลักขึ้นต้นด้วย 0)",
+      })
       return
     }
 
     setSaving(true)
-    setError(null)
-    setSuccess(false)
 
     try {
       let nisitCardMediaId = formData.nisitCardMediaId
@@ -146,13 +161,28 @@ export default function EditNisitPage() {
 
       const result = await updateNisitInfo(payload)
       if (!result) {
-        setError("ไม่สามารถบันทึกข้อมูลได้ กรุณาลองใหม่")
+        toast({
+            variant: "destructive",
+            title: "บันทึกไม่สำเร็จ",
+            description: "ไม่สามารถบันทึกข้อมูลได้ กรุณาลองใหม่",
+        })
         return
       }
-      setSuccess(true)
+      
+      // Success Toast
+      toast({
+        variant: "success", // ใช้ variant success ตามที่ร้องขอ
+        title: "บันทึกสำเร็จ",
+        description: "ข้อมูลของคุณถูกอัปเดตเรียบร้อยแล้ว",
+      })
+
     } catch (err) {
       console.error(err)
-      setError("เกิดข้อผิดพลาดระหว่างบันทึกข้อมูล กรุณาลองใหม่")
+      toast({
+        variant: "destructive",
+        title: "เกิดข้อผิดพลาด",
+        description: "เกิดข้อผิดพลาดระหว่างบันทึกข้อมูล กรุณาลองใหม่",
+      })
     } finally {
       setSaving(false)
     }
@@ -225,17 +255,14 @@ export default function EditNisitPage() {
                   disabled={saving}
                   initialFiles={initialCardUploadedFiles}
                 />
-                {/* {formData.nisitCardMediaId && uploadedFiles.length === 0 && (
-                  <p className="text-xs text-emerald-600">มีไฟล์อยู่แล้ว (ID: {formData.nisitCardMediaId})</p>
-                )} */}
               </div>
 
-              {error && (
+              {/* แสดง Error เฉพาะกรณี Load หน้าเว็บไม่ขึ้น (Critical Error) */}
+              {fetchError && (
                 <p role="alert" className="text-sm text-red-600">
-                  {error}
+                  {fetchError}
                 </p>
               )}
-              {success && <p className="text-sm text-emerald-600">บันทึกข้อมูลเรียบร้อยแล้ว</p>}
             </CardContent>
 
             <CardFooter className="flex justify-between gap-4">

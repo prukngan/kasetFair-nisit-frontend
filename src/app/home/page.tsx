@@ -45,6 +45,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { getNisitInfo } from "@/services/nisitService"
 import { NisitInfo } from "@/services/dto/nisit-info.dto"
+import { logout } from "@/services/authService"
 
 // --- Types ---
 type Invitation = {
@@ -120,35 +121,54 @@ export default function HomePage() {
   const [transferring, setTransferring] = useState(false)
 
   const displayName = useMemo(
-    () => session?.user?.name || session?.user?.email || "Kaset Fair Member",
-    [session?.user?.email, session?.user?.name]
+    () => `${userInfo?.firstName} ${userInfo?.lastName}` || "Kaset Fair Member",
+    [userInfo?.lastName, userInfo?.firstName]
   )
   const displayInitial = useMemo(
     () => (displayName?.charAt(0)?.toUpperCase() ?? "U"),
     [displayName]
   )
 
-  const fetchInvitations = useCallback(async () => {
-    setLoadingInvites(true)
-    setInviteError(null)
+  // const fetchInvitations = useCallback(async () => {
+  //   setLoadingInvites(true)
+  //   setInviteError(null)
+  //   try {
+  //     const res = await http.get<Invitation[]>("/shops/invitations")
+  //     const data = Array.isArray(res.data) ? res.data : []
+  //     setInvitations(data)
+  //   } catch (error) {
+  //     console.error("Failed to load invitations", error)
+  //     setInviteError("โหลดคำเชิญไม่สำเร็จ")
+  //     setInvitations([])
+  //     // Toast Error
+  //     toast({
+  //       variant: "error",
+  //       title: "ผิดพลาด",
+  //       description: "ไม่สามารถโหลดข้อมูลคำเชิญได้",
+  //     })
+  //   } finally {
+  //     setLoadingInvites(false)
+  //   }
+  // }, [toast])
+
+  const handleLogout = async () => {
     try {
-      const res = await http.get<Invitation[]>("/shops/invitations")
-      const data = Array.isArray(res.data) ? res.data : []
-      setInvitations(data)
-    } catch (error) {
-      console.error("Failed to load invitations", error)
-      setInviteError("โหลดคำเชิญไม่สำเร็จ")
-      setInvitations([])
-      // Toast Error
-      toast({
-        variant: "error",
-        title: "ผิดพลาด",
-        description: "ไม่สามารถโหลดข้อมูลคำเชิญได้",
-      })
-    } finally {
-      setLoadingInvites(false)
+      const res = await logout();
+
+      if (!res?.success) {
+        console.error("Logout failed:", res);
+        return;
+      }
+
+      // ล้าง state client อื่น ๆ ถ้าจำเป็น
+      // เช่น sessionStorage.clear()
+
+      // reload หน้าให้ browser ล้าง cookie จากฝั่ง server
+      window.location.reload();
+    } catch (err) {
+      console.error("Logout error:", err);
     }
-  }, [toast])
+  };
 
   const fetchStoreData = useCallback(async () => {
     setLoadingStore(true)
@@ -344,34 +364,40 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-emerald-50 px-4 py-6">
-      {/* Header */}
-      <header className="mx-auto w-full max-w-3xl">
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-emerald-900">{displayName}</h1>
-            <p className="mt-1 text-sm text-emerald-700">
-              จัดการร้านและคำเชิญของคุณ
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <Link
-              href="/info"
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-emerald-800 shadow hover:ring-2 hover:ring-emerald-200"
-            >
-              <span className="text-sm font-semibold">{displayInitial}</span>
-            </Link>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-9 shrink-0 border-emerald-200 text-emerald-700"
-              onClick={() => signOut({ callbackUrl: "/login" })}
-            >
-              <LogOut className="h-4 w-4" />
-              <span className="ml-1 hidden sm:inline">ออกจากระบบ</span>
-            </Button>
+    <header className="mx-auto w-full max-w-3xl shadowmb-6 px-1 sm:px-0">
+      <div className="rounded-2xl bg-white border border-emerald-50 p-4 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.05)] flex items-center justify-between gap-4">
+        
+        <div className="flex items-center gap-3.5 overflow-hidden">
+          <Link
+            href="/info"
+            // เพิ่ม ring ให้ดูมีมิติเมื่ออยู่บนการ์ดขาว
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 font-bold text-lg ring-4 ring-emerald-50 transition-all active:scale-95"
+          >
+            {displayInitial}
+          </Link>
+          <div className="flex flex-col min-w-0">
+            <span className="text-xs font-medium text-emerald-500">ยินดีต้อนรับ,</span>
+            <h1 className="text-lg font-bold text-slate-800 truncate leading-tight">
+              {displayName}
+            </h1>
           </div>
         </div>
-      </header>
+
+        <div>
+            {/* ใช้ปุ่มสีเทาอ่อนๆ (slate-100) เพื่อให้ดูเป็น action รองลงมา */}
+          <Button
+            variant="secondary" 
+            size="sm"
+            className="h-9 w-9 p-0 rounded-xl bg-slate-100 text-slate-600 hover:bg-red-50 hover:text-red-600 transition-colors sm:w-auto sm:px-3"
+            onClick={() => handleLogout()}
+          >
+            <LogOut className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline text-xs">ออกระบบ</span>
+          </Button>
+        </div>
+
+      </div>
+    </header>
 
       {/* Main Content */}
       <main className="mx-auto mt-4 grid w-full max-w-3xl gap-4 md:mt-6 md:grid-cols-2">
@@ -559,23 +585,22 @@ export default function HomePage() {
             {/* NO STORE: CREATE UI */}
             {!loadingStore && !storeError && !store && (
               <div className="space-y-4">
-                 <Button
+                <Button
                   className={`w-full ${
-                    selectingStoreType 
-                      ? "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    selectingStoreType
+                      ? "border border-emerald-600 text-emerald-600 bg-white hover:bg-emerald-50"
                       : "bg-emerald-600 text-white hover:bg-emerald-700"
                   }`}
                   onClick={handleCreateStore}
                 >
                   {selectingStoreType ? (
-                      <>ยกเลิก</> 
+                    <>ยกเลิก</>
                   ) : (
                     <>
                       <Plus className="mr-2 h-5 w-5" /> สร้างร้านค้าใหม่
                     </>
                   )}
-                </Button>
-                
+                </Button> 
                 {!selectingStoreType && (
                   <p className="text-center text-xs text-gray-400">
                     หรือรอรับคำเชิญจากเพื่อนของคุณ

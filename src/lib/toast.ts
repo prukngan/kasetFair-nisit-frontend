@@ -1,34 +1,25 @@
 "use client"
 
-import { toast as sonnerToast } from "sonner"
+import { toast as sonner } from "sonner"
 
-type ToastVariant = "default" | "success" | "error" | "warning" | "destructive"
+type ToastVariant = "default" | "success" | "warning" | "error" | "destructive"
 
-type ToastOptions = {
+export function toast(opts: {
   title?: string
   description?: string
   variant?: ToastVariant
-}
+}) {
+  const msg = opts.description || opts.title || ""
 
-export function toast(options: ToastOptions) {
-  const { title, description, variant = "default" } = options
-
-  const msg = description || title || ""
-  if (!msg) return
-
-  switch (variant) {
+  switch (opts.variant) {
     case "success":
-      sonnerToast.success(msg)
-      break
-    case "destructive":
-    case "error":
-      sonnerToast.error(msg)
-      break
+      return sonner.success(msg)
     case "warning":
-      sonnerToast.warning(msg)
-      break
+      return sonner.warning(msg)
+    case "error":
+    case "destructive":
+      return sonner.error(msg)
     default:
-      sonnerToast(msg)
-      break
+      return sonner(msg)
   }
 }

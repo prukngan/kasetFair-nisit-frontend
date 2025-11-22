@@ -40,3 +40,8 @@ export function loginWithKU() {
   // ฝั่ง Next.js ให้ browser เด้งไปที่ backend ทันที
   window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/ku/login`;
 }
+
+export async function logout() {
+  const { data } = await http.post("/auth/logout");
+  return data;
+}
