@@ -2,27 +2,18 @@
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { UploadCloud } from "lucide-react"
 import Image from "next/image"
-import { GoogleFileUpload } from "@/components/uploadFile"
-import type { GoodsType } from "@/services/dto/store-info.dto"
 
 type StepTwoFormProps = {
   layoutDescription: string
   layoutFileName: string | null
-  initialLayoutUploadedFiles?: Array<{
-    id: string
-    name: string
-    url: string
-    size?: number
-    type?: string
-  }>
-  goodType: GoodsType | null
   isStoreAdmin: boolean
   storeAdminNisitId?: string | null
   onDescriptionChange: (value: string) => void
   onFileChange: (file: File | null) => void
-  onGoodTypeChange: (value: GoodsType | null) => void
   onBack: () => void
   onNext: () => void
   saving: boolean
@@ -31,13 +22,10 @@ type StepTwoFormProps = {
 export function StepTwoForm({
   layoutDescription,
   layoutFileName,
-  initialLayoutUploadedFiles,
-  goodType,
   isStoreAdmin,
   storeAdminNisitId,
   onDescriptionChange,
   onFileChange,
-  onGoodTypeChange,
   onBack,
   onNext,
   saving,
@@ -93,78 +81,28 @@ export function StepTwoForm({
 
           <div className="space-y-2">
             <Label htmlFor="layoutFile">อัปโหลดผังร้านของคุณ</Label>
-            <GoogleFileUpload
-              maxFiles={1}
-              accept="image/png,image/jpeg,image/jpg,image/webp,application/pdf"
-              maxSize={10 * 1024 * 1024}
-              onFilesChange={(files) => onFileChange(files[0] ?? null)}
-              disabled={!isStoreAdmin || saving}
-              initialFiles={
-                initialLayoutUploadedFiles?.length
-                  ? initialLayoutUploadedFiles
-                  : layoutFileName
-                    ? [
-                        {
-                          id: "existing-layout-file",
-                          name: layoutFileName,
-                          url: "",
-                        },
-                      ]
-                    : []
-              }
+            <label
+              htmlFor="layoutFile"
+              className="flex w-full cursor-pointer items-center justify-between rounded-lg border border-dashed border-emerald-200 bg-emerald-50/60 px-4 py-3 text-sm text-emerald-700 hover:bg-emerald-100"
+              aria-disabled={!isStoreAdmin}
+            >
+              <span>{layoutFileName ?? "เลือกไฟล์ .pdf หรือ .png"}</span>
+              <UploadCloud className="h-4 w-4" />
+            </label>
+            <Input
+              id="layoutFile"
+              type="file"
+              accept=".png,.jpg,.jpeg,.pdf"
+              className="hidden"
+              disabled={!isStoreAdmin}
+              onChange={(event) => {
+                const file = event.target.files?.[0] ?? null
+                onFileChange(file)
+              }}
             />
             <p id="layoutFileHelp" className="text-xs text-emerald-600">
               รองรับไฟล์ .png, .jpg, .jpeg และ .pdf ขนาดไม่เกิน 10 MB
             </p>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="goodType" className="text-sm font-medium text-emerald-900">
-              ประเภทสินค้า <span className="text-red-500">*</span>
-            </Label>
-            <div className="space-y-2">
-              <div className="flex items-center space-x-2">
-                <input
-                  type="radio"
-                  id="goodType-Food"
-                  name="goodType"
-                  value="Food"
-                  checked={goodType === "Food"}
-                  onChange={() => onGoodTypeChange("Food")}
-                  disabled={!isStoreAdmin || saving}
-                  className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300"
-                />
-                <Label
-                  htmlFor="goodType-Food"
-                  className="text-sm font-normal cursor-pointer"
-                >
-                  อาหารและเครื่องดื่ม
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <input
-                  type="radio"
-                  id="goodType-NonFood"
-                  name="goodType"
-                  value="NonFood"
-                  checked={goodType === "NonFood"}
-                  onChange={() => onGoodTypeChange("NonFood")}
-                  disabled={!isStoreAdmin || saving}
-                  className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300"
-                />
-                <Label
-                  htmlFor="goodType-NonFood"
-                  className="text-sm font-normal cursor-pointer"
-                >
-                  สินค้าอื่นๆ
-                </Label>
-              </div>
-            </div>
-            {!isStoreAdmin && (
-              <p className="text-xs text-amber-600">
-                มีเพียงผู้ดูแลร้านเท่านั้นที่สามารถแก้ไขได้
-              </p>
-            )}
           </div>
         </CardContent>
 

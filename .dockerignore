@@ -1,0 +1,12 @@
+.next
+node_modules
+tmp.patch
+tmp_before.txt
+tsconfig.tsbuildinfo
+.git
+.gitignore
+.env
+.env.*
+npm-debug.log*
+pnpm-debug.log*
+yarn-error.log*

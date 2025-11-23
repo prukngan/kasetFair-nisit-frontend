@@ -6,6 +6,8 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: __dirname,
   },
+  // Ensure error pages are not statically generated
+  output: "standalone",
 };
 
 export default nextConfig;

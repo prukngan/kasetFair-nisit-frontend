@@ -1,7 +1,7 @@
 "use client"
 
 import type { ReactNode } from "react"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { AlertCircle, CheckCircle2, Loader2, RefreshCcw, Save } from "lucide-react"
 
@@ -24,7 +24,15 @@ type StoreQuestionsFormProps = {
   canEdit?: boolean
 }
 
-export function StoreQuestionsForm({ canEdit = true }: StoreQuestionsFormProps) {
+export function StoreQuestionsForm(props: StoreQuestionsFormProps) {
+  return (
+    <Suspense fallback={<div className="p-4 text-center text-emerald-600">Loading form...</div>}>
+      <StoreQuestionsFormContent {...props} />
+    </Suspense>
+  )
+}
+
+function StoreQuestionsFormContent({ canEdit = true }: StoreQuestionsFormProps) {
   const searchParams = useSearchParams()
   const storeIdParam = searchParams.get("storeId")
   const storeId = useMemo(() => Number(storeIdParam), [storeIdParam])
